@@ -10,10 +10,20 @@ roslaunch nav_cloning nav_cloning_sim.launch
 rosservice call /start_wp_nav
 ```
 * save data:  /nav_cloning/data/result \
+  * nav_cloning_node: \
 loss \
 angle_error : navigationの出力と訓練されたモデルの出力の差 \
 distance : 目標経路とロボットの位置の間の距離
 
+  * nav_cloning_proposed_old, nav_cloning_angle_diff: \
+loss \
+angle_error : navigationの出力と訓練されたモデルの出力の差 \
+distance : 目標経路とロボットの位置の間の距離 \
+count_f : -0.1 < angle < 0.1 \
+count_ml : 0.1 < angle < 0.2 \
+count_l : 0.2 < angle \
+count_mr: - 0.2 < angle < -0.1 \
+count_r : angle < -0.2 
 ## install
 * 環境 ubuntu18.04, ros melodic
 
