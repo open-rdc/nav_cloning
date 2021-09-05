@@ -1,0 +1,16 @@
+version: "3"
+services:
+  ros-vnc:
+    image: masayaokada/nav_cloning:melodic-desktop
+    container_name: nav_cloning
+    working_dir: /home/ubuntu
+    tty: true
+    environment:
+      - USER=ubuntu
+      - PASSWORD=ubuntu
+      - RESOLUTION=1920x1080
+    ports:
+      - "8080:80"
+      - "5900:5900"
+    volumes:
+      - ~/share:/home/ubuntu/share:rw

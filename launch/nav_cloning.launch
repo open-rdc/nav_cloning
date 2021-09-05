@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+	<node pkg="nav_cloning" type="nav_cloning_node.py" name="nav_cloning_node" output="screen"/>
+</launch>
