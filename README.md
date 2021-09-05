@@ -57,7 +57,7 @@ docker-compose up
 ```
 or
 ```
-docker pull -p 8080:80 masayaokada/nav_cloning:melodic-desktop
+docker pull -p 8080:80 masayaokada/nav_cloning:open-rdc
 ```
 2. アクセス
 Access to http://localhost:8080

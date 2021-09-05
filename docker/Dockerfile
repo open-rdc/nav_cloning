@@ -22,7 +22,7 @@ RUN echo "export ROS_PACKAGE_PATH=\${ROS_PACKAGE_PATH}:/home/ubuntu/catkin_ws" >
 RUN echo "export TURTLEBOT3_MODEL=waffle" >> ~/.bashrc
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN cd /home/ubuntu/catkin_ws/src && \
-    wget https://raw.githubusercontent.com/MasayaOkada/nav_cloning/master/nav_cloning.install && \
+    wget https://raw.githubusercontent.com/open-rdc/nav_cloning/master/nav_cloning.install && \
     wstool init && \
     wstool merge nav_cloning.install && \
     wstool up 
