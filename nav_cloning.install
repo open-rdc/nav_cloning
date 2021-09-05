@@ -19,7 +19,7 @@
     local-name: turtlebot3_gazebo_plugin
     version: master
 - git:
-    uri: https://github.com/MasayaOkada/nav_cloning.git
+    uri: https://github.com/open-rdc/nav_cloning.git
     local-name: nav_cloning
     version: master
 - git:
