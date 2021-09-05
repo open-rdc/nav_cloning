@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="rosservice" type="rosservice" name="rosservice1" args="call /training True"/>
+  <node pkg="rosservice" type="rosservice" name="rosservice2" args="call /start_wp_nav"/>
+</launch>
+

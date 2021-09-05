@@ -23,6 +23,7 @@ import csv
 import os
 import time
 import copy
+import sys
 
 class cource_following_learning_node:
     def __init__(self):
@@ -51,15 +52,18 @@ class cource_following_learning_node:
         self.learning = True
         self.select_dl = False
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
-        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result/'
-        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model/'
+        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_proposed_new/'
+        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_proposed_new/'
         self.previous_reset_time = 0
+        self.pos_x = 0
+        self.pos_y = 0
+        self.is_started = False
         self.start_time_s = rospy.get_time()
         os.makedirs(self.path + self.start_time)
 
         with open(self.path + self.start_time + '/' +  'reward.csv', 'w') as f:
             writer = csv.writer(f, lineterminator='\n')
-            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)'])
+            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)'])
 
     def callback(self, data):
         try:
@@ -85,7 +89,8 @@ class cource_following_learning_node:
     def callback_pose(self, data):
         distance_list = []
         pos = data.pose.pose.position
-
+        self.pos_x = pos.x
+        self.pos_y = pos.y
         for pose in self.path_pose.poses:
             path = pose.pose.position
             distance = np.sqrt(abs((pos.x - path.x)**2 + (pos.y - path.y)**2))
@@ -121,9 +126,10 @@ class cource_following_learning_node:
             print("Service did not process request: " + str(exc))
         """
         
-        if self.vel.linear.x == 0:
+        if self.vel.linear.x != 0:
+            self.is_started = True
+        if self.is_started == False:
             return
-
         img = resize(self.cv_image, (48, 64), mode='constant')
         r, g, b = cv2.split(img)
         imgobj = np.asanyarray([r,g,b])
@@ -138,11 +144,14 @@ class cource_following_learning_node:
 
         ros_time = str(rospy.Time.now())
 
-
-        if self.episode == 4000:
+        if self.episode == 8000:
             self.learning = False
-            #self.dl.save(self.save_path)
+            self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
+
+        if self.episode == 12000:
+            os.system('killall roslaunch')
+            sys.exit()
 
         if self.learning:
             target_action = self.action
@@ -202,7 +211,7 @@ class cource_following_learning_node:
 
             print(" episode: " + str(self.episode) + ", loss: " + str(loss) + ", angle_error: " + str(angle_error) + ", distance: " + str(distance))
             self.episode += 1
-            line = [str(self.episode), "training", str(loss), str(angle_error), str(distance)]
+            line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y)]
             with open(self.path + self.start_time + '/' + 'reward.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
@@ -217,7 +226,7 @@ class cource_following_learning_node:
 
             self.episode += 1
             angle_error = abs(self.action - target_action)
-            line = [str(self.episode), "test", "0", str(angle_error), str(distance)]
+            line = [str(self.episode), "test", "0", str(angle_error), str(distance), str(self.pos_x), str(self.pos_y)]
             with open(self.path + self.start_time + '/' + 'reward.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
