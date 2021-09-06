@@ -25,7 +25,7 @@
   </node>
 
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
-        args="15 nav_cloning start_wp_nav.launch"
+        args="20 nav_cloning start_wp_nav.launch"
         name="timed_roslaunch3" >
   </node>
 </launch>
