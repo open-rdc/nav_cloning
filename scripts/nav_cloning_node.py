@@ -15,9 +15,6 @@ from std_srvs.srv import Trigger
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_srvs.srv import Empty
-#from gazebo_msgs.srv import SetModelState
-#from gazebo_msgs.srv import GetModelState
-#from gazebo_msgs.msg import ModelState
 from std_srvs.srv import SetBool, SetBoolResponse
 import csv
 import os
@@ -112,15 +109,7 @@ class cource_following_learning_node:
             return
         if self.cv_right_image.size != 640 * 480 * 3:
             return
-        """
-        rospy.wait_for_service('/gazebo/get_model_state')
-        get_model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
-        try:
-            previous_model_state = get_model_state('mobile_base', 'world')
-        except rospy.ServiceException as exc:
-            print("Service did not process request: " + str(exc))
-        """
-        
+
         if self.vel.linear.x == 0:
             return
 
