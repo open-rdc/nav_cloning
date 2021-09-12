@@ -156,19 +156,19 @@ class cource_following_learning_node:
             distance = self.min_distance
             self.action, self.loss = self.dl.act_and_trains(imgobj, target_action)
             if target_action > 0.2:
-              	self.count_l += 1
+                self.count_l += 1
             elif target_action < -0.2:
-              	self.count_r += 1
+                self.count_r += 1
             elif target_action > 0.1:
-              	self.count_ml += 1
+                self.count_ml += 1
             elif target_action < -0.1:
-              	self.count_mr += 1
+                self.count_mr += 1
             else:
-              	self.count_f += 1
+                self.count_f += 1
 
             if abs(target_action) < 0.1:
-               	action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-               	action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
+                action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
+                action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
 
             self.angle_error = abs(self.action - target_action)
             self.count = self.count_f + self.count_l + self.count_r + self.count_ml + self.count_mr

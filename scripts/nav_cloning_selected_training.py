@@ -59,8 +59,8 @@ class cource_following_learning_node:
         self.collision = False
         self.select_dl = False
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
-        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_angle_diff/'
-        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_angle_diff/'
+        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_selected_training/'
+        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_selected_training/'
         self.previous_reset_time = 0
         self.pos_x = 0
         self.pos_y = 0
@@ -154,6 +154,9 @@ class cource_following_learning_node:
         if self.learning:
             target_action = self.vel_angular
             distance = self.min_distance
+            self.action = self.dl.act(imgobj)
+            self.angle_error = abs(self.action - target_action)
+
             if self.angle_error > 0.05:
                 self.action, self.loss = self.dl.act_and_trains(imgobj, target_action)
                 if target_action > 0.2:
@@ -171,7 +174,6 @@ class cource_following_learning_node:
                     action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
                     action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
 
-            self.angle_error = abs(self.action - target_action)
             self.count = self.count_f + self.count_l + self.count_r + self.count_ml + self.count_mr
             if distance > 0.1:
                 self.select_dl = False
