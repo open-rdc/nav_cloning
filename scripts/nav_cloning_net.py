@@ -96,7 +96,7 @@ class deep_learning:
 
     def save(self, save_path):
         path = save_path + time.strftime("%Y%m%d_%H:%M:%S")
-        os.mkdir(path)
+        os.makedirs(path)
         chainer.serializers.save_npz(path + '/model.net' , self.net)
 
     def load(self, load_path):

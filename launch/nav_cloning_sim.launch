@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="script" default="nav_cloning_node.py"/>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find nav_cloning)/world/willow_garage.world"/> 
@@ -15,11 +16,16 @@
   <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model mobile_base -x 0.0 -y 0.0 -z 0.0 -param robot_description" />
 
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
-        args="5 nav_cloning nav_cloning.launch"
+        args="5 nav_cloning nav_cloning.launch script:=$(arg script)"
         name="timed_roslaunch" output="screen" />
 
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
         args="8 nav_cloning turtlebot3_navigation.launch model:=waffle map_file:=$(find nav_cloning)/maps/willowgarage.yaml waypoints_file:=$(find nav_cloning)/maps/willow_loop.yaml"
         name="timed_roslaunch2" >
+  </node>
+
+  <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
+        args="20 nav_cloning start_wp_nav.launch"
+        name="timed_roslaunch3" >
   </node>
 </launch>

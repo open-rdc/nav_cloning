@@ -15,9 +15,6 @@ from std_srvs.srv import Trigger
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_srvs.srv import Empty
-#from gazebo_msgs.srv import SetModelState
-#from gazebo_msgs.srv import GetModelState
-#from gazebo_msgs.msg import ModelState
 from std_srvs.srv import SetBool, SetBoolResponse
 import csv
 import os
@@ -42,18 +39,28 @@ class cource_following_learning_node:
         self.pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_pose)
         self.path_sub = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.callback_path)
         self.min_distance = 0.0
+        self.vel_angular = 0.0
         self.action = 0.0
         self.episode = 0
+        self.count = 0
+        self.count_f = 0
+        self.count_ml = 0
+        self.count_mr = 0
+        self.count_l = 0
+        self.count_r = 0
+        self.loss = 0.0
+        self.angle_error = 0.0
         self.vel = Twist()
         self.path_pose = PoseArray()
         self.cv_image = np.zeros((480,640,3), np.uint8)
         self.cv_left_image = np.zeros((480,640,3), np.uint8)
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.learning = True
+        self.collision = False
         self.select_dl = False
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
-        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_proposed_new/'
-        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_proposed_new/'
+        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_angle_diff/'
+        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_angle_diff/'
         self.previous_reset_time = 0
         self.pos_x = 0
         self.pos_y = 0
@@ -63,7 +70,7 @@ class cource_following_learning_node:
 
         with open(self.path + self.start_time + '/' +  'reward.csv', 'w') as f:
             writer = csv.writer(f, lineterminator='\n')
-            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)'])
+            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)','dataset(f)','dataset(ml)','dataset(l)','dataset(mr)','dataset(r)'])
 
     def callback(self, data):
         try:
@@ -101,7 +108,7 @@ class cource_following_learning_node:
 
     def callback_vel(self, data):
         self.vel = data
-        self.action = self.vel.angular.z
+        self.vel_angular = self.vel.angular.z
 
     def callback_dl_training(self, data):
         resp = SetBoolResponse()
@@ -117,15 +124,6 @@ class cource_following_learning_node:
             return
         if self.cv_right_image.size != 640 * 480 * 3:
             return
-        """
-        rospy.wait_for_service('/gazebo/get_model_state')
-        get_model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
-        try:
-            previous_model_state = get_model_state('mobile_base', 'world')
-        except rospy.ServiceException as exc:
-            print("Service did not process request: " + str(exc))
-        """
-        
         if self.vel.linear.x != 0:
             self.is_started = True
         if self.is_started == False:
@@ -154,64 +152,37 @@ class cource_following_learning_node:
             sys.exit()
 
         if self.learning:
-            target_action = self.action
+            target_action = self.vel_angular
             distance = self.min_distance
+            if self.angle_error > 0.05:
+                self.action, self.loss = self.dl.act_and_trains(imgobj, target_action)
+                if target_action > 0.2:
+                    self.count_l += 1
+                elif target_action < -0.2:
+                    self.count_r += 1
+                elif target_action > 0.1:
+                    self.count_ml += 1
+                elif target_action < -0.1:
+                    self.count_mr += 1
+                else:
+                    self.count_f += 1
 
-            """
-            # conventional method
-            if distance > 0.1:
-                self.select_dl = False
-            elif distance < 0.05:
-                self.select_dl = True
-            if self.select_dl and self.episode >= 0:
-                target_action = 0
-            action, loss = self.dl.act_and_trains(imgobj, target_action)
-            if abs(target_action) < 0.1:
-                action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
-            angle_error = abs(action - target_action)
-            """
-            """
-            # proposed method (new)
-            action, loss = self.dl.act_and_trains(imgobj, target_action)
-            if abs(target_action) < 0.1:
-                action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
-                angle_error = abs(action - target_action)
-            if distance > 0.1:
-                self.select_dl = False
-            elif distance < 0.05:
-                self.select_dl = True
-            if self.select_dl and self.episode >= 0:
-                target_action = 0
-            """
+                if abs(target_action) < 0.1:
+                    action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
+                    action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
 
-            # proposed method (old)
-            action, loss = self.dl.act_and_trains(imgobj, target_action)
-            if abs(target_action) < 0.1:
-                action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
-            angle_error = abs(action - target_action)
+            self.angle_error = abs(self.action - target_action)
+            self.count = self.count_f + self.count_l + self.count_r + self.count_ml + self.count_mr
             if distance > 0.1:
                 self.select_dl = False
             elif distance < 0.05:
                 self.select_dl = True
             if self.select_dl and self.episode >= 0:
-                target_action = action
+                target_action = self.action
             
-            """
-            # follow line method
-            action, loss = self.dl.act_and_trains(imgobj, target_action)
-            if abs(target_action) < 0.1:
-                action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
-            angle_error = abs(action - target_action)
-            """
-            # end method
-
-            print(" episode: " + str(self.episode) + ", loss: " + str(loss) + ", angle_error: " + str(angle_error) + ", distance: " + str(distance))
+            print(" episode: " + str(self.episode) + ", count: " + str(self.count) + ", loss: " + str(self.loss) + ", angle_error: " + str(self.angle_error) + ", distance: " + str(distance))
             self.episode += 1
-            line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y)]
+            line = [str(self.episode), "training", str(self.loss), str(self.angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.count_f),  str(self.count_ml),  str(self.count_l), str(self.count_mr), str(self.count_r)]
             with open(self.path + self.start_time + '/' + 'reward.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
