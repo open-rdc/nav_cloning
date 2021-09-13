@@ -10,7 +10,7 @@ from nav_cloning_net import *
 from skimage.transform import resize
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseArray
-from std_msgs.msg import Int8
+from std_msgs.msg import Int8, Float32
 from std_srvs.srv import Trigger
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -30,13 +30,15 @@ class cource_following_learning_node:
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
         self.vel_sub = rospy.Subscriber("/nav_vel", Twist, self.callback_vel)
+        self.alpha_sub = rospy.Subscriber("/alpha", Float32, self.callback_alpha)
         self.action_pub = rospy.Publisher("action", Int8, queue_size=1)
         self.nav_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.srv = rospy.Service('/training', SetBool, self.callback_dl_training)
-        self.pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_pose)
+        self.pose_sub = rospy.Subscriber("/mcl_pose", PoseWithCovarianceStamped, self.callback_pose)
         self.path_sub = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.callback_path)
         self.min_distance = 0.0
         self.cov = 0.0
+        self.alpha = 0.0
         self.action = 0.0
         self.vel = Twist()
         self.path_pose = PoseArray()
@@ -71,6 +73,9 @@ class cource_following_learning_node:
         if distance_list:
             self.min_distance = min(distance_list)
 
+    def callback_alpha(self, data):
+        self.alpha = data.data
+
     def callback_vel(self, data):
         self.vel = data
         self.action = self.vel.angular.z
@@ -96,21 +101,21 @@ class cource_following_learning_node:
         ros_time = str(rospy.Time.now())
         self.dl.load()
 
-        if self.cov < 1:
+        if self.alpha > 0.6:
             self.model_base = False
         else:
             self.model_base = True
 
         if self.model_base:
             target_action = self.dl.act(imgobj)
-            print("TEST MODE: " + " angular:" + str(target_action))
+            print("TEST MODE: " + " covariance:" + str(self.cov) + " alpha:" + str(self.alpha))
             self.vel.linear.x = 0.2
             self.vel.angular.z = target_action
             self.nav_pub.publish(self.vel)
 
         else:
             target_action = self.action
-            print("NAVIGSTION MODE: " + " angular:" + str(target_action))
+            print("NAVIGSTION MODE: " + " covariance:" + str(self.cov) + " alpha:" + str(self.alpha))
             self.vel.linear.x = 0.2
             self.vel.angular.z = target_action
             self.nav_pub.publish(self.vel)
