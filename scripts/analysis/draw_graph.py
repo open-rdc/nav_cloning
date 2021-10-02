@@ -12,7 +12,7 @@ import numpy as np
 
 def arrow():
     rospy.init_node('arrow_node', anonymous=True)
-    path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_path/'
+    path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
     fig = pyplot.figure()
     ax = fig.add_subplot(111)
     arrow_dict = dict(arrowstyle = "->", color = "black")
