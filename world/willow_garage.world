@@ -160,5 +160,6 @@
         <kinematic>0</kinematic>
       </link>
     </model>
+    <plugin filename="libcollision_map_creator.so" name="collision_map_creator"/>
   </world>
 </sdf>
