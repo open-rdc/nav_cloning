@@ -15,10 +15,8 @@ def arrow():
     path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
     image = Image.open(roslib.packages.get_pkg_dir('nav_cloning')+'/maps/map.png').convert("L")
     arr = np.asarray(image)
-
     fig = pyplot.figure()
     ax = fig.add_subplot(111)
-
     ax.imshow(arr, cmap='gray', extent=[-10,50,-10,50])
     arrow_dict = dict(arrowstyle = "->", color = "black")
     with open(path + 'result.csv', 'r') as f:
