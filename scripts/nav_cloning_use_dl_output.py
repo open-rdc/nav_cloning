@@ -21,6 +21,8 @@ import os
 import time
 import copy
 import sys
+import tf
+from nav_msgs.msg import Odometry
 
 class cource_following_learning_node:
     def __init__(self):
@@ -42,12 +44,6 @@ class cource_following_learning_node:
         self.vel_angular = 0.0
         self.action = 0.0
         self.episode = 0
-        self.count = 0
-        self.count_f = 0
-        self.count_ml = 0
-        self.count_mr = 0
-        self.count_l = 0
-        self.count_r = 0
         self.loss = 0.0
         self.angle_error = 0.0
         self.vel = Twist()
@@ -59,18 +55,20 @@ class cource_following_learning_node:
         self.collision = False
         self.select_dl = False
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
-        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_proposed_old/'
-        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_proposed_old/'
+        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_use_dl_output/'
+        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_use_dl_output/'
         self.previous_reset_time = 0
-        self.pos_x = 0
-        self.pos_y = 0
+        self.pos_x = 0.0
+        self.pos_y = 0.0
+        self.pos_the = 0.0
         self.is_started = False
         self.start_time_s = rospy.get_time()
         os.makedirs(self.path + self.start_time)
 
         with open(self.path + self.start_time + '/' +  'reward.csv', 'w') as f:
             writer = csv.writer(f, lineterminator='\n')
-            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)','dataset(f)','dataset(ml)','dataset(l)','dataset(mr)','dataset(r)'])
+            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)', 'the(rad)'])
+        self.tracker_sub = rospy.Subscriber("/tracker", Odometry, self.callback_tracker)
 
     def callback(self, data):
         try:
@@ -90,14 +88,20 @@ class cource_following_learning_node:
         except CvBridgeError as e:
             print(e)
 
+    def callback_tracker(self, data):
+        self.pos_x = data.pose.pose.position.x
+        self.pos_y = data.pose.pose.position.y
+        rot = data.pose.pose.orientation
+        angle = tf.transformations.euler_from_quaternion((rot.x, rot.y, rot.z, rot.w))
+        self.pos_the = angle[2]
+
     def callback_path(self, data):
         self.path_pose = data
 
     def callback_pose(self, data):
         distance_list = []
         pos = data.pose.pose.position
-        self.pos_x = pos.x
-        self.pos_y = pos.y
+
         for pose in self.path_pose.poses:
             path = pose.pose.position
             distance = np.sqrt(abs((pos.x - path.x)**2 + (pos.y - path.y)**2))
@@ -142,12 +146,11 @@ class cource_following_learning_node:
 
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 8000:
+        if self.episode == 4000:
             self.learning = False
             self.dl.save(self.save_path)
-            #self.dl.load(self.load_path)
 
-        if self.episode == 12000:
+        if self.episode == 6000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -155,23 +158,12 @@ class cource_following_learning_node:
             target_action = self.vel_angular
             distance = self.min_distance
             self.action, self.loss = self.dl.act_and_trains(imgobj, target_action)
-            if target_action > 0.2:
-              	self.count_l += 1
-            elif target_action < -0.2:
-              	self.count_r += 1
-            elif target_action > 0.1:
-              	self.count_ml += 1
-            elif target_action < -0.1:
-              	self.count_mr += 1
-            else:
-              	self.count_f += 1
 
             if abs(target_action) < 0.1:
                	action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
                	action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
 
             self.angle_error = abs(self.action - target_action)
-            self.count = self.count_f + self.count_l + self.count_r + self.count_ml + self.count_mr
             if distance > 0.1:
                 self.select_dl = False
             elif distance < 0.05:
@@ -179,9 +171,9 @@ class cource_following_learning_node:
             if self.select_dl and self.episode >= 0:
                 target_action = self.action
             
-            print(" episode: " + str(self.episode) + ", count: " + str(self.count) + ", loss: " + str(self.loss) + ", angle_error: " + str(self.angle_error) + ", distance: " + str(distance))
+            print(" episode: " + str(self.episode) + "loss: " + str(self.loss) + ", angle_error: " + str(self.angle_error) + ", distance: " + str(distance))
             self.episode += 1
-            line = [str(self.episode), "training", str(self.loss), str(self.angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.count_f),  str(self.count_ml),  str(self.count_l), str(self.count_mr), str(self.count_r)]
+            line = [str(self.episode), "training", str(self.loss), str(self.angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
             with open(self.path + self.start_time + '/' + 'reward.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
@@ -196,7 +188,7 @@ class cource_following_learning_node:
 
             self.episode += 1
             angle_error = abs(self.action - target_action)
-            line = [str(self.episode), "test", "0", str(angle_error), str(distance), str(self.pos_x), str(self.pos_y)]
+            line = [str(self.episode), "test", "0", str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
             with open(self.path + self.start_time + '/' + 'reward.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
@@ -219,3 +211,4 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         rg.loop()
         r.sleep()
+
