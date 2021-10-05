@@ -65,8 +65,6 @@ class calc_traceable_pos:
             self.state.pose.orientation.y = quaternion[1]
             self.state.pose.orientation.z = quaternion[2]
             self.state.pose.orientation.w = quaternion[3]
-            while self.save_img_no != self.pos_no:
-                self.r.sleep()
             try:
                 set_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
                 resp = set_state( self.state )
@@ -76,6 +74,8 @@ class calc_traceable_pos:
             self.r.sleep()
             self.r.sleep() #need adjust
             self.pos_no += 1
+            while self.save_img_no != self.pos_no:
+                self.r.sleep()
             ang_vel = self.target_action
             if ang_vel == 0:
                 ang_vel = 0.001

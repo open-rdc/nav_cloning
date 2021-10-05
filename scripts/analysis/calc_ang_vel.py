@@ -24,7 +24,7 @@ class calc_ang_vel:
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
         self.pos_no = 0
-        self.save_img_no = -1
+        self.save_img_no = 0
         self.dl = deep_learning(n_action = 1)
         self.load_path = self.path + 'model.net'
         self.dl.load(self.load_path)
@@ -33,7 +33,6 @@ class calc_ang_vel:
     def callback(self, data):
         try:
             if self.save_img_no != self.pos_no:
-                self.save_img_no = self.pos_no
                 self.cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
                 im_resized = cv2.resize(self.cv_image, dsize=(64, 48))
                 cv2.imwrite(self.path+str(self.save_img_no)+".jpg", im_resized)
@@ -42,6 +41,7 @@ class calc_ang_vel:
                 imgobj = np.asanyarray([r,g,b])
                 self.target_action = self.dl.act(imgobj)
                 print(self.target_action)
+                self.save_img_no = self.pos_no
         except CvBridgeError as e:
             print(e)
 
@@ -70,11 +70,14 @@ class calc_ang_vel:
                         resp = set_state( state )
                     except rospy.ServiceException, e:
                         print("Service call failed: %s" % e)
+                    r.sleep()
+                    r.sleep()
+                    r.sleep() #need adjust
+                    self.pos_no += 1
                     while self.save_img_no != self.pos_no:
                         r.sleep()
                     line = [str(x), str(y), str(the), str(self.target_action)]
                     writer.writerow(line)
-                    self.pos_no += 1
 
 if __name__ == '__main__':
     cav = calc_ang_vel()
