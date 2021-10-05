@@ -54,7 +54,7 @@ class calc_traceable_pos:
     def check_traceable(self, x, y, angle, dy):
         traceable = 0.0
         vel = 0.2
-        for offset_ang in [-10, 0, 10]:
+        for offset_ang in [-5, 0, 5]:
             the = angle + math.radians(offset_ang)
             the = the - 2.0 * math.pi if the >  math.pi else the
             the = the + 2.0 * math.pi if the < -math.pi else the
@@ -94,8 +94,9 @@ class calc_traceable_pos:
                 if l_sq < min_len_sq:
                     min_len_sq = l_sq
             min_len = math.sqrt(min_len_sq)
-            if min_len < dy or min_len < 0.25:
+            if min_len < abs(dy) or min_len < 0.1:
                 traceable += 1.0
+            print("dy: "+str(dy)+", ang_vel: "+str(ang_vel)+", min_len: "+str(min_len))
         return traceable/3.0
 
     def calc_traceable_pos(self):
@@ -132,7 +133,7 @@ class calc_traceable_pos:
                                 angle = math.atan2(dy, dx)
                                 for offset_y in [-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3]:
                                     px, py = x-offset_y*math.sin(angle), y+offset_y*math.cos(angle)
-                                    traceable = self.check_traceable(px, py, angle, dy)
+                                    traceable = self.check_traceable(px, py, angle, offset_y)
                                     line = [str(px), str(py), str(angle), str(traceable)]
                                     writer.writerow(line)
                                     x0, y0 = x, y
