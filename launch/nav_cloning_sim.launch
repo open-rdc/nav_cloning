@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="script" default="nav_cloning_node.py"/>
+  <arg name="mode" default="use_dl_output"/>
+  <rosparam param="/nav_cloning_node/mode" subst_value="True">$(arg mode)</rosparam>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find nav_cloning)/world/willow_garage.world"/> 
