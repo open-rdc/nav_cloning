@@ -18,7 +18,8 @@ def calc_traceable_histogram():
         for row in csv.reader(f):
             str_x, str_y, str_the, str_traceable = row
             traceable = float(str_traceable)
-            sum_of_traceable[i] += traceable
+            if traceable == 1.0:
+               sum_of_traceable[i] += traceable
             i += 1
             if i >= len(offset_y):
                 i = 0
