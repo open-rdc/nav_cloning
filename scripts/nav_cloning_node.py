@@ -144,6 +144,7 @@ class nav_cloning_node:
         if self.episode == 4000:
             self.learning = False
             self.dl.save(self.save_path)
+            #self.dl.load(self.load_path)
 
         if self.episode == 6000:
             os.system('killall roslaunch')
@@ -198,6 +199,21 @@ class nav_cloning_node:
                     action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
                     action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
                 angle_error = abs(action - target_action)
+
+            elif self.mode == "selected_training":
+                action = self.dl.act(imgobj)
+                angle_error = abs(action - target_action)
+                if self.angle_error > 0.05:
+                    action, loss = self.dl.act_and_trains(imgobj, target_action)
+                    if abs(target_action) < 0.1:
+                        action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
+                        action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
+                if distance > 0.1:
+                    self.select_dl = False
+                elif distance < 0.05:
+                    self.select_dl = True
+                if self.select_dl and self.episode >= 0:
+                    target_action = action
 
             # end mode
 
