@@ -2,10 +2,16 @@
 <launch>
   <arg name="script" default="nav_cloning_node.py"/>
   <arg name="mode" default="use_dl_output"/>
+  <arg name="world_name" default="willow_garage.world"/>
+  <arg name="map_file" default="willowgarage.yaml"/>
+  <arg name="waypoints_file" default="willow_loop.yaml"/>
+  <arg name="initial_pose_x" default="-10.78" />
+  <arg name="initial_pose_y" default="-16.78" />
+  <arg name="use_waypoint_nav" default="false" />
   <rosparam param="/nav_cloning_node/mode" subst_value="True">$(arg mode)</rosparam>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" value="$(find nav_cloning)/world/willow_garage.world"/> 
+    <arg name="world_name" value="$(find nav_cloning)/world/$(arg world_name)"/> 
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="gui" value="true"/>
@@ -17,12 +23,14 @@
 
   <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model mobile_base -x 0.0 -y 0.0 -z 0.0 -param robot_description" />
 
+  <node pkg="nav_cloning" type="initpose" name="initpose"/>
+
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
         args="5 nav_cloning nav_cloning.launch script:=$(arg script)"
         name="timed_roslaunch" output="screen" />
 
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
-        args="8 nav_cloning turtlebot3_navigation.launch model:=waffle map_file:=$(find nav_cloning)/maps/willowgarage.yaml waypoints_file:=$(find nav_cloning)/maps/willow_loop.yaml"
+        args="8 nav_cloning turtlebot3_navigation.launch model:=waffle map_file:=$(find nav_cloning)/maps/$(arg map_file) waypoints_file:=$(find nav_cloning)/maps/$(arg waypoints_file) initial_pose_x:=$(arg initial_pose_x) initial_pose_y:=$(arg initial_pose_y) use_waypoint_nav:=$(arg use_waypoint_nav)"
         name="timed_roslaunch2" >
   </node>
 

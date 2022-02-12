@@ -7,6 +7,11 @@
   <arg name="move_forward_only" default="false"/>
   <arg name="waypoints_file" default="/home/masaya/maps/waypoints_willow.yaml"/>
   <arg name="dist_err" default="0.8"/>
+  <arg name="initial_pose_x" default="-10.78" />
+  <arg name="initial_pose_y" default="-16.78" />
+  <arg name="use_waypoint_nav" default="false" />
+  <arg name="rate" default="3.0"/>
+  <arg name="loop" default="true"/>
 
   <!-- Turtlebot3 -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
@@ -18,8 +23,8 @@
 
   <!-- AMCL -->
   <include file="$(find turtlebot3_navigation)/launch/amcl.launch">
-    <arg name="initial_pose_x" value="-10.78" />
-    <arg name="initial_pose_y" value="-16.78" />
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)" />
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)" />
   </include>
 
   <!-- move_base -->
@@ -29,10 +34,19 @@
     <arg name="cmd_vel_topic" value="/nav_vel"/>
   </include>
 
-  <node name="waypoints_nav" pkg="fulanghua_waypoints_nav" type="waypoints_nav" output="screen">
-    <param name="filename" value="$(arg waypoints_file)"/>
-    <param name="dist_err" value="$(arg dist_err)"/>
-  </node>
+  <group unless="$(arg use_waypoint_nav)">
+    <node name="waypoints_nav" pkg="fulanghua_waypoints_nav" type="waypoints_nav" output="screen">
+      <param name="filename" value="$(arg waypoints_file)"/>
+      <param name="dist_err" value="$(arg dist_err)"/>
+    </node>
+  </group>
+  <group if="$(arg use_waypoint_nav)">
+    <node name="waypoint_nav" pkg="waypoint_nav" type="waypoint_navigator" output="screen">
+      <param name="filename" value="$(arg waypoints_file)"/>
+      <param name="dist_err" value="$(arg dist_err)"/>
+      <param name="max_update_rate" value="$(arg rate)"/>
+      <param name="loop_flag" value="$(arg loop)"/>    </node>
+  </group>
 
   <!-- rviz -->
   <group if="$(arg open_rviz)"> 
