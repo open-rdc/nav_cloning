@@ -203,7 +203,8 @@ class nav_cloning_node:
             elif self.mode == "selected_training":
                 action = self.dl.act(imgobj)
                 angle_error = abs(action - target_action)
-                if self.angle_error > 0.05:
+                loss = 0
+                if angle_error > 0.05:
                     action, loss = self.dl.act_and_trains(imgobj, target_action)
                     if abs(target_action) < 0.1:
                         action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
@@ -217,7 +218,7 @@ class nav_cloning_node:
 
             # end mode
 
-            print(" episode: " + str(self.episode) + ", loss: " + str(loss) + ", angle_error: " + str(angle_error) + ", distance: " + str(distance))
+            print(str(self.episode) + ", training, loss: " + str(loss) + ", angle_error: " + str(angle_error) + ", distance: " + str(distance))
             self.episode += 1
             line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
             with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
@@ -230,7 +231,7 @@ class nav_cloning_node:
         else:
             target_action = self.dl.act(imgobj)
             distance = self.min_distance
-            print("TEST MODE: " + " angular:" + str(target_action) + ", distance: " + str(distance))
+            print(str(self.episode) + ", test, angular:" + str(target_action) + ", distance: " + str(distance))
 
             self.episode += 1
             angle_error = abs(self.action - target_action)
