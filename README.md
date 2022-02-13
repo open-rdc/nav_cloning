@@ -1,5 +1,24 @@
 # nav_cloning
 ## Running simulation
+
+### 一括して起動
+* nav_cloning (一定経路の模倣学習)
+```
+roscd nav_cloning/experiments/
+./experiment_use_dl_output.sh
+```
+`nav_cloning/data`フォルダにログと学習済みモデルを保存  
+シェルファイルのパラメータを変更することで様々な条件で実験可能
+
+* nav_cloning_with_direction (経路選択を含む模倣学習)
+```
+roscd nav_cloning/experiments/
+./experiment_with_direction_use_dl_output.sh
+```
+`nav_cloning/data`フォルダにログと学習済みモデルが保存  
+シェルファイルのパラメータを変更することで様々な条件で実験可能
+
+### 分割して起動
 * シミュレータの起動
 ```
 roslaunch nav_cloning nav_cloning_sim.launch
