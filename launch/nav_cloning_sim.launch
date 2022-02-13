@@ -25,7 +25,7 @@
 
   <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model mobile_base -x 0.0 -y 0.0 -z 0.0 -param robot_description" />
 
-  <group unless="$(arg use_initpose)">
+  <group if="$(arg use_initpose)">
     <node pkg="nav_cloning" type="initpose" name="initpose"/>
   </group>
 
