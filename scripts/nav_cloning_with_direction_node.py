@@ -147,7 +147,7 @@ class nav_cloning_node:
         cmd_dir = np.asanyarray(self.cmd_dir_data)
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 6000:
+        if self.episode == 4000:
             self.learning = False
             self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
@@ -259,7 +259,7 @@ class nav_cloning_node:
 
 if __name__ == '__main__':
     rg = nav_cloning_node()
-    DURATION = 0.2
+    DURATION = 0.25
     r = rospy.Rate(1 / DURATION)
     while not rospy.is_shutdown():
         rg.loop()
