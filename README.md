@@ -18,6 +18,8 @@ roscd nav_cloning/experiments/
 `nav_cloning/data`フォルダにログと学習済みモデルが保存  
 シェルファイルのパラメータを変更することで様々な条件で実験可能
 
+[![IMAGE](http://img.youtube.com/vi/6LG06ZbCjto/0.jpg)](https://youtu.be/6LG06ZbCjto)
+
 ### 分割して起動
 * シミュレータの起動
 ```
