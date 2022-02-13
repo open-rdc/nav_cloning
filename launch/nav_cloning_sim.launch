@@ -9,6 +9,7 @@
   <arg name="initial_pose_x" default="-10.78" />
   <arg name="initial_pose_y" default="-16.78" />
   <arg name="use_waypoint_nav" default="false" />
+  <arg name="use_initpose" default="false" />
   <rosparam param="/nav_cloning_node/mode" subst_value="True">$(arg mode)</rosparam>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -24,7 +25,9 @@
 
   <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model mobile_base -x 0.0 -y 0.0 -z 0.0 -param robot_description" />
 
-  <node pkg="nav_cloning" type="initpose" name="initpose"/>
+  <group unless="$(arg use_initpose)">
+    <node pkg="nav_cloning" type="initpose" name="initpose"/>
+  </group>
 
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
         args="5 nav_cloning nav_cloning.launch script:=$(arg script)"
