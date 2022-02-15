@@ -8,8 +8,12 @@
   <arg name="dist_err" default="0.8"/>
   <arg name="initial_pose_x" default="-10.78" />
   <arg name="initial_pose_y" default="-16.78" />
+  <arg name="initial_pose_a" default="0.0" />
   <arg name="use_waypoint_nav" default="false" />
   <arg name="use_initpose" default="false" />
+  <arg name="robot_x" default="0.0" />
+  <arg name="robot_y" default="0.0" />
+  <arg name="robot_Y" default="0.0" />
   <rosparam param="/nav_cloning_node/mode" subst_value="True">$(arg mode)</rosparam>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -23,7 +27,7 @@
 
   <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_waffle_pi.urdf.xacro" />
 
-  <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model mobile_base -x 0.0 -y 0.0 -z 0.0 -param robot_description" />
+  <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model mobile_base -x $(arg robot_x) -y $(arg robot_y) -z 0.0 -Y $(arg robot_Y) -param robot_description" />
 
   <group if="$(arg use_initpose)">
     <node pkg="nav_cloning" type="initpose" name="initpose"/>
@@ -34,7 +38,7 @@
         name="timed_roslaunch" output="screen" />
 
   <node pkg="timed_roslaunch" type="timed_roslaunch.sh"
-        args="8 nav_cloning turtlebot3_navigation.launch model:=waffle map_file:=$(find nav_cloning)/maps/$(arg map_file) waypoints_file:=$(find nav_cloning)/maps/$(arg waypoints_file) dist_err:=$(arg dist_err) initial_pose_x:=$(arg initial_pose_x) initial_pose_y:=$(arg initial_pose_y) use_waypoint_nav:=$(arg use_waypoint_nav)"
+        args="8 nav_cloning turtlebot3_navigation.launch model:=waffle map_file:=$(find nav_cloning)/maps/$(arg map_file) waypoints_file:=$(find nav_cloning)/maps/$(arg waypoints_file) dist_err:=$(arg dist_err) initial_pose_x:=$(arg initial_pose_x) initial_pose_y:=$(arg initial_pose_y) initial_pose_a:=$(arg initial_pose_a) use_waypoint_nav:=$(arg use_waypoint_nav)"
         name="timed_roslaunch2" >
   </node>
 
