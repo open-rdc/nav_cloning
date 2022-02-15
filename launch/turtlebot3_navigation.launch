@@ -9,6 +9,7 @@
   <arg name="dist_err" default="0.8"/>
   <arg name="initial_pose_x" default="-10.78" />
   <arg name="initial_pose_y" default="-16.78" />
+  <arg name="initial_pose_a" default="0.0" />
   <arg name="use_waypoint_nav" default="false" />
   <arg name="rate" default="3.0"/>
   <arg name="loop" default="true"/>
@@ -25,6 +26,7 @@
   <include file="$(find turtlebot3_navigation)/launch/amcl.launch">
     <arg name="initial_pose_x" value="$(arg initial_pose_x)" />
     <arg name="initial_pose_y" value="$(arg initial_pose_y)" />
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)" />
   </include>
 
   <!-- move_base -->
