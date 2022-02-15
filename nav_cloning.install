@@ -26,3 +26,9 @@
     uri: https://github.com/ros-planning/navigation.git
     local-name: navigation
     version: melodic-devel
+
+- git:
+    uri: https://github.com/open-rdc/waypoint_nav
+    local-name: waypoint_nav
+    version: main
+
