@@ -2,7 +2,6 @@
 <launch>
   <arg name="script" default="nav_cloning_node.py"/>
   <arg name="mode" default="use_dl_output"/>
-  <arg name="world_name" default="willow_garage.world"/>
   <arg name="map_file" default="willowgarage.yaml"/>
   <arg name="waypoints_file" default="willow_loop.yaml"/>
   <arg name="dist_err" default="0.8"/>
