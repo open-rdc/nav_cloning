@@ -1,11 +1,3 @@
-# import chainer
-# import chainer.functions as F
-# import chainer.links as L
-# from chainer import Chain, Variable
-# from chainer.datasets import TupleDataset
-# from chainer.iterators import SerialIterator
-# from chainer.optimizer_hooks import WeightDecay
-# from chainer import serializers
 from pickletools import optimize
 from platform import release
 from pyexpat import model
@@ -48,7 +40,7 @@ class Net(nn.Module):
         self.fc5 = nn.Linear(512,n_out)
         self.relu = nn.ReLU(inplace=True)
         
-        self.maxpool = nn.MaxPool2d()
+        #self.maxpool = nn.MaxPool2d()
         self.batch = nn.BatchNorm2d(64)
         self.flatten = nn.Flatten()
         
@@ -76,8 +68,8 @@ class deep_learning:
     def __init__(self, n_channel=3, n_action=1):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.net = Net(n_channel, n_action).to(device)
-        self.optimizer = optim.Adam(eps=1e-2,weight_decay=5e-4)
-        self.optimizer.setup(self.net.parameters())
+        self.optimizer = optim.Adam(self.net.parameters(), eps=1e-2,weight_decay=5e-4)
+        #self.optimizer.setup(self.net.parameters())
 
         self.n_action = n_action
         self.count = 0
