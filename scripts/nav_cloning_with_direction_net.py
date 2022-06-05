@@ -14,7 +14,7 @@ from os.path import expanduser
 
 # HYPER PARAM
 BATCH_SIZE = 8
-MAX_DATA = 10000
+MAX_DATA = 100000
 
 class Net(chainer.Chain):
     def __init__(self, n_channel=3, n_action=1):
@@ -111,6 +111,7 @@ class deep_learning:
                 self.count += 1
 
                 self.results_train['loss'] .append(loss_train.array)
+                print("trains: "+str(self.count));
 
     def act(self, imgobj, cmd_dir):
             x = [self.phi(s) for s in [imgobj]]
