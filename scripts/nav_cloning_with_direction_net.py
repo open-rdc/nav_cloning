@@ -92,6 +92,26 @@ class deep_learning:
                 action_value = self.net(x_test, c_test)
             return action_value.data[0][0], loss_train.array
 
+    def trains(self, iteration):
+            dataset = TupleDataset(self.data, self.cmd, self.target_angles)
+            train_iter = SerialIterator(dataset, batch_size = BATCH_SIZE, repeat=True, shuffle=True)
+            for i in range(iteration):
+                train_batch  = train_iter.next()
+                x_train, c_train, t_train = chainer.dataset.concat_examples(train_batch, -1)
+
+                y_train = self.net(x_train, c_train)
+                loss_train = F.mean_squared_error(y_train, Variable(t_train.reshape(BATCH_SIZE, 1)))
+
+                self.loss_list.append(loss_train.array)
+
+                self.net.cleargrads()
+                loss_train.backward()
+                self.optimizer.update()
+
+                self.count += 1
+
+                self.results_train['loss'] .append(loss_train.array)
+
     def act(self, imgobj, cmd_dir):
             x = [self.phi(s) for s in [imgobj]]
             c = np.array([cmd_dir],np.float32)

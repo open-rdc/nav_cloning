@@ -147,12 +147,12 @@ class nav_cloning_node:
         cmd_dir = np.asanyarray(self.cmd_dir_data)
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 4000:
+        if self.episode == 20000:
             self.learning = False
             self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
 
-        if self.episode == 12000:
+        if self.episode == 30000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -215,6 +215,8 @@ class nav_cloning_node:
                     if abs(target_action) < 0.1:
                         action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, cmd_dir, target_action - 0.2)
                         action_right, loss_right = self.dl.act_and_trains(imgobj_right, cmd_dir, target_action + 0.2)
+                else:
+                    self.dl.trains(3)
                 if distance > 0.1:
                     self.select_dl = False
                 elif distance < 0.05:
@@ -259,7 +261,7 @@ class nav_cloning_node:
 
 if __name__ == '__main__':
     rg = nav_cloning_node()
-    DURATION = 0.25
+    DURATION = 0.2
     r = rospy.Rate(1 / DURATION)
     while not rospy.is_shutdown():
         rg.loop()
