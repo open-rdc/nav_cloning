@@ -174,12 +174,14 @@ class nav_cloning_node:
 #            self.vel.linear.x = 0.0
 #            self.vel.angular.z = 0.0
 #            self.nav_pub.publish(self.vel)
-            #self.dl.load(self.load_path)
+#            self.dl.load("/home/haya/catkin_ws/src/nav_cloning/data/model_with_dir_selected_training/20220607_09:33:20/model.net")
+#            self.dl.load(self.load_path)
 #            self.episode += 1
 #            return
 #        
 #        if self.episode == 20000+1:
 #            self.dl.trains(10000)
+#            self.dl.save(self.save_path)
 
         if self.episode == 30000:
             os.system('killall roslaunch')
@@ -240,17 +242,18 @@ class nav_cloning_node:
                 action = self.dl.act(imgobj, cmd_dir)
                 angle_error = abs(action - target_action)
                 loss = 0
+                times = 1 if (cmd_dir == np.array([100, 0, 0, 0])).all() else 5
                 if angle_error > 0.05:
-                    action, loss = self.dl.act_and_trains(imgobj, cmd_dir, target_action)
+                    action, loss = self.dl.act_and_trains(imgobj, cmd_dir, target_action, times)
                     action = max(min(action, 0.8), -0.8)
                     if abs(target_action) < 0.1:
-                        action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, cmd_dir, target_action - 0.2)
-                        action_right, loss_right = self.dl.act_and_trains(imgobj_right, cmd_dir, target_action + 0.2)
+                        action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, cmd_dir, target_action - 0.2, 1)
+                        action_right, loss_right = self.dl.act_and_trains(imgobj_right, cmd_dir, target_action + 0.2, 1)
                 else:
                     self.dl.trains(2)
-                if distance > 0.1 or angle_error > 0.4:
+                if distance > 0.2 or angle_error > 0.4:
                     self.select_dl = False
-                elif distance < 0.05:
+                elif distance < 0.1:
                     self.select_dl = True
                 if self.select_dl and self.episode >= 0:
                     target_action = action

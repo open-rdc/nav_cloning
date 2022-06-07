@@ -58,14 +58,15 @@ class deep_learning:
         self.cmd =[]
         self.target_angles = []
 
-    def act_and_trains(self, imgobj, cmd_dir, target_angle):
+    def act_and_trains(self, imgobj, cmd_dir, target_angle, times):
             x = [self.phi(s) for s in [imgobj]]
             c = np.array([cmd_dir], np.float32)
             t = np.array([target_angle], np.float32)
-            self.data.append(x[0])
-            self.cmd.append(c[0])
-            self.target_angles.append(t[0])
-            if len(self.data) > MAX_DATA:
+            for i in range(times):
+                self.data.append(x[0])
+                self.cmd.append(c[0])
+                self.target_angles.append(t[0])
+            while len(self.data) > MAX_DATA:
                 del self.data[0]
                 del self.cmd[0]
                 del self.target_angles[0]
