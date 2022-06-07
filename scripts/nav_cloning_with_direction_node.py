@@ -24,6 +24,7 @@ import copy
 import sys
 import tf
 from nav_msgs.msg import Odometry
+import tf2_ros
 
 class nav_cloning_node:
     def __init__(self):
@@ -39,7 +40,7 @@ class nav_cloning_node:
         self.action_pub = rospy.Publisher("action", Int8, queue_size=1)
         self.nav_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.srv = rospy.Service('/training', SetBool, self.callback_dl_training)
-        self.pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_pose)
+#        self.pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_pose)
         self.path_sub = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.callback_path)
         self.cmd_dir_sub = rospy.Subscriber("/cmd_dir", Int8MultiArray, self.callback_cmd,queue_size=1)
         self.min_distance = 0.0
@@ -68,6 +69,9 @@ class nav_cloning_node:
             writer = csv.writer(f, lineterminator='\n')
             writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)', 'the(rad)', 'direction'])
         self.tracker_sub = rospy.Subscriber("/tracker", Odometry, self.callback_tracker)
+
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
     def callback(self, data):
         try:
@@ -105,6 +109,23 @@ class nav_cloning_node:
             distance = np.sqrt(abs((pos.x - path.x)**2 + (pos.y - path.y)**2))
             distance_list.append(distance)
 
+        if distance_list:
+            self.min_distance = min(distance_list)
+
+    def calc_distance(self):
+        distance_list = []
+
+        try:
+            trans = self.tfBuffer.lookup_transform('map', 'base_link', rospy.Time())
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            self.min_distance = 0.0
+            return
+
+        pos = trans.transform.translation
+        for pose in self.path_pose.poses:
+            path = pose.pose.position
+            distance = np.sqrt(abs((pos.x - path.x)**2 + (pos.y - path.y)**2))
+            distance_list.append(distance)
         if distance_list:
             self.min_distance = min(distance_list)
 
@@ -147,17 +168,28 @@ class nav_cloning_node:
         cmd_dir = np.asanyarray(self.cmd_dir_data)
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 4000:
+        if self.episode == 20000:
             self.learning = False
             self.dl.save(self.save_path)
-            #self.dl.load(self.load_path)
+#            self.vel.linear.x = 0.0
+#            self.vel.angular.z = 0.0
+#            self.nav_pub.publish(self.vel)
+#            self.dl.load("/home/haya/catkin_ws/src/nav_cloning/data/model_with_dir_selected_training/20220607_09:33:20/model.net")
+#            self.dl.load(self.load_path)
+#            self.episode += 1
+#            return
+#        
+#        if self.episode == 20000+1:
+#            self.dl.trains(10000)
+#            self.dl.save(self.save_path)
 
-        if self.episode == 12000:
+        if self.episode == 30000:
             os.system('killall roslaunch')
             sys.exit()
 
         if self.learning:
             target_action = self.action
+            self.calc_distance()
             distance = self.min_distance
 
             if self.mode == "manual":
@@ -210,14 +242,18 @@ class nav_cloning_node:
                 action = self.dl.act(imgobj, cmd_dir)
                 angle_error = abs(action - target_action)
                 loss = 0
+                times = 1 if (cmd_dir == np.array([100, 0, 0, 0])).all() else 5
                 if angle_error > 0.05:
-                    action, loss = self.dl.act_and_trains(imgobj, cmd_dir, target_action)
+                    action, loss = self.dl.act_and_trains(imgobj, cmd_dir, target_action, times)
+                    action = max(min(action, 0.8), -0.8)
                     if abs(target_action) < 0.1:
-                        action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, cmd_dir, target_action - 0.2)
-                        action_right, loss_right = self.dl.act_and_trains(imgobj_right, cmd_dir, target_action + 0.2)
-                if distance > 0.1:
+                        action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, cmd_dir, target_action - 0.2, 1)
+                        action_right, loss_right = self.dl.act_and_trains(imgobj_right, cmd_dir, target_action + 0.2, 1)
+                else:
+                    self.dl.trains(2)
+                if distance > 0.2 or angle_error > 0.4:
                     self.select_dl = False
-                elif distance < 0.05:
+                elif distance < 0.1:
                     self.select_dl = True
                 if self.select_dl and self.episode >= 0:
                     target_action = action
@@ -259,7 +295,7 @@ class nav_cloning_node:
 
 if __name__ == '__main__':
     rg = nav_cloning_node()
-    DURATION = 0.25
+    DURATION = 0.2
     r = rospy.Rate(1 / DURATION)
     while not rospy.is_shutdown():
         rg.loop()

@@ -14,7 +14,7 @@ from os.path import expanduser
 
 # HYPER PARAM
 BATCH_SIZE = 8
-MAX_DATA = 10000
+MAX_DATA = 100000
 
 class Net(chainer.Chain):
     def __init__(self, n_channel=3, n_action=1):
@@ -58,14 +58,15 @@ class deep_learning:
         self.cmd =[]
         self.target_angles = []
 
-    def act_and_trains(self, imgobj, cmd_dir, target_angle):
+    def act_and_trains(self, imgobj, cmd_dir, target_angle, times):
             x = [self.phi(s) for s in [imgobj]]
             c = np.array([cmd_dir], np.float32)
             t = np.array([target_angle], np.float32)
-            self.data.append(x[0])
-            self.cmd.append(c[0])
-            self.target_angles.append(t[0])
-            if len(self.data) > MAX_DATA:
+            for i in range(times):
+                self.data.append(x[0])
+                self.cmd.append(c[0])
+                self.target_angles.append(t[0])
+            while len(self.data) > MAX_DATA:
                 del self.data[0]
                 del self.cmd[0]
                 del self.target_angles[0]
@@ -91,6 +92,27 @@ class deep_learning:
             with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
                 action_value = self.net(x_test, c_test)
             return action_value.data[0][0], loss_train.array
+
+    def trains(self, iteration):
+            dataset = TupleDataset(self.data, self.cmd, self.target_angles)
+            train_iter = SerialIterator(dataset, batch_size = BATCH_SIZE, repeat=True, shuffle=True)
+            for i in range(iteration):
+                train_batch  = train_iter.next()
+                x_train, c_train, t_train = chainer.dataset.concat_examples(train_batch, -1)
+
+                y_train = self.net(x_train, c_train)
+                loss_train = F.mean_squared_error(y_train, Variable(t_train.reshape(BATCH_SIZE, 1)))
+
+                self.loss_list.append(loss_train.array)
+
+                self.net.cleargrads()
+                loss_train.backward()
+                self.optimizer.update()
+
+                self.count += 1
+
+                self.results_train['loss'] .append(loss_train.array)
+                print("trains: "+str(self.count));
 
     def act(self, imgobj, cmd_dir):
             x = [self.phi(s) for s in [imgobj]]
