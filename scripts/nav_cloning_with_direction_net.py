@@ -1,106 +1,162 @@
-import chainer
-import chainer.functions as F
-import chainer.links as L
-from chainer import Chain, Variable
-from chainer.datasets import TupleDataset
-from chainer.iterators import SerialIterator
-from chainer.optimizer_hooks import WeightDecay
-from chainer import serializers
+from pickletools import optimize
+from platform import release
+from pyexpat import features, model
+import re
+from turtle import forward
+from typing_extensions import Self
+from chainer import Optimizer
+from gpg import Data
 import numpy as np
 import matplotlib as plt
 import os
 import time
 from os.path import expanduser
+from paramiko import Channel
+
+import torch
+import torchvision
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset, Dataset, random_split
+from torchvision import transforms
+from torchvision.datasets import ImageFolder
+import torch.optim as optim
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from yaml import load
+
 
 # HYPER PARAM
 BATCH_SIZE = 8
 MAX_DATA = 10000
 
-class Net(chainer.Chain):
-    def __init__(self, n_channel=3, n_action=1):
-        initializer = chainer.initializers.HeNormal()
-        super(Net, self).__init__(
-            conv1=L.Convolution2D(n_channel, 32, ksize=8, stride=4, nobias=False, initialW=initializer),
-            conv2=L.Convolution2D(32, 64, ksize=3, stride=2, nobias=False, initialW=initializer),
-            conv3=L.Convolution2D(64, 64, ksize=3, stride=1, nobias=False, initialW=initializer),
-            fc4=L.Linear(960, 512, initialW=initializer),
-            fc5=L.Linear(512, 256, initialW=initializer),
-            fc6=L.Linear(260, 260, initialW=initializer),#img=256 cmd=[0,0,0,0]=4 256+4=260
-            fc7=L.Linear(260, n_action, initialW=np.zeros((n_action, 260), dtype=np.int32))
-            )
-    def __call__(self, x, c, test=False):
-        s = chainer.Variable(x)
-        h1 = F.relu(self.conv1(s))
-        h2 = F.relu(self.conv2(h1))
-        h3 = F.relu(self.conv3(h2))
-        h4 = F.relu(self.fc4(h3))
-        h5 = F.relu(self.fc5(h4))
-        s2 = chainer.Variable(c)
-        h6 = F.relu(self.fc6(F.concat((h5,s2),axis=1)))
-        h = self.fc7(h6)
-        return h
+class Net(nn.Module):
+    def __init__(self, n_channel, n_out):
+        super().__init__()
+        self.conv1 = nn.Conv2d(n_channel, 32,kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32,64,kernel_size=3, stride=2)
+        self.conv3 = nn.Conv2d(64,64, kernel_size=3, stride=1)
+        self.fc4 = nn.Linear(960, 512)
+        self.fc5 = nn.Linear(512,256)
+        self.fc6 = nn.Linear(260, 260)
+        self.fc7 = nn.Linear(260,n_out)
+        self.relu = nn.ReLU(inplace=True)
+        
+        #self.maxpool = nn.MaxPool2d()
+        self.batch = nn.BatchNorm2d(64)
+        self.flatten = nn.Flatten()
+        
+        self.cnn_layer = nn.Sequential(
+            self.conv1,
+            self.relu,
+            self.conv2,
+            self.relu,
+            self.conv3,
+            self.relu,
+            self.flatten
+        )
+        self.fc_layer = nn.Sequential(
+            self.fc4,
+            self.relu,
+            self.fc5,
+            self.relu
+        )
+
+        self.concat_layer = nn.Sequential(
+            self.fc6,
+            self.relu,
+            self.fc7
+        )
+
+    def forward(self,x,c):
+        x1 = self.cnn_layer(x)
+        x2 = self.fc_layer(x1)
+        x3 = torch.cat([x2,c], dim=1)
+        x4 = self.concat_layer(x3)
+        return x4
 
 class deep_learning:
     def __init__(self, n_channel=3, n_action=1):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = Net(n_channel, n_action)
-        self.optimizer = chainer.optimizers.Adam(eps=1e-2)
-        self.optimizer.setup(self.net)
-        self.optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
+        self.net.to(self.device)
+        print(self.device)
+        self.optimizer = optim.Adam(self.net.parameters(), eps=1e-2,weight_decay=5e-4)
+        #self.optimizer.setup(self.net.parameters())
+        self.totensor = transforms.ToTensor()
         self.n_action = n_action
-        self.phi = lambda x: x.astype(np.float32, copy=False)
         self.count = 0
         self.accuracy = 0
         self.results_train = {}
         self.results_train['loss'], self.results_train['accuracy'] = [], []
         self.loss_list = []
         self.acc_list = []
-        self.data = []
-        self.cmd =[]
+        self.img_data = []
+        self.dir_list =[]
         self.target_angles = []
+        self.criterion = nn.MSELoss()
+        self.transform=transforms.Compose([transforms.ToTensor()])
 
-    def act_and_trains(self, imgobj, cmd_dir, target_angle):
-            x = [self.phi(s) for s in [imgobj]]
-            c = np.array([cmd_dir], np.float32)
-            t = np.array([target_angle], np.float32)
-            self.data.append(x[0])
-            self.cmd.append(c[0])
-            self.target_angles.append(t[0])
-            if len(self.data) > MAX_DATA:
-                del self.data[0]
-                del self.cmd[0]
-                del self.target_angles[0]
-            dataset = TupleDataset(self.data, self.cmd, self.target_angles)
-            train_iter = SerialIterator(dataset, batch_size = BATCH_SIZE, repeat=True, shuffle=True)
-            train_batch  = train_iter.next()
-            x_train, c_train, t_train = chainer.dataset.concat_examples(train_batch, -1)
 
-            y_train = self.net(x_train, c_train)
-            loss_train = F.mean_squared_error(y_train, Variable(t_train.reshape(BATCH_SIZE, 1)))
+    def act_and_trains(self, img, dir_cmd,target_angle):
+            self.net.train()
 
-            self.loss_list.append(loss_train.array)
+            #transform data to tensor
+            self.img_data.append(img)
+            self.dir_list.append(dir_cmd)
+            self.target_angles.append([target_angle])
+            x = torch.tensor(self.img_data,dtype =torch.float32, device=self.device)
+            # (Batch,Channel,H,W) -> (Batch ,Channel, H,W)
+            x= x.permute(0,3,1,2)
+            c = torch.tensor(self.dir_list,dtype=torch.float32,device=self.device)
+            t = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
 
-            self.net.cleargrads()
-            loss_train.backward()
-            self.optimizer.update()
+            # self.img_data.append(x)
+            # self.dir_list.append(c)
+            # self.target_angles.append(t)
+
+            # if len(self.img_data) > MAX_DATA:
+            #     del self.img_data[0]
+            #     del self.dir_list[0]
+            #     del self.target_angles[0]
             
+            #fix dataset
+            #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
+            dataset = TensorDataset(x,c,t)
+            #print(dataset)
+            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)#train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
+            
+            #only cpu
+            # train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE,shuffle=True)
+            
+            #split dataset
+            for x_train, c_train, t_train in train_dataset:
+                x_train.to(self.device)
+                c_train.to(self.device)
+                t_train.to(self.device)
+                break
+
+            #learning
+            y_train = self.net(x_train,c_train)
+            loss = self.criterion(y_train, t_train) 
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad
             self.count += 1
 
-            self.results_train['loss'] .append(loss_train.array)
-            x_test = chainer.dataset.concat_examples(x, -1)
-            c_test = chainer.dataset.concat_examples(c, -1)
-            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-                action_value = self.net(x_test, c_test)
-            return action_value.data[0][0], loss_train.array
+            #test
+            action_value_training = self.net(x,c)
+            #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
+            return action_value_training[0][0].item(), loss.item()
 
-    def act(self, imgobj, cmd_dir):
-            x = [self.phi(s) for s in [imgobj]]
-            c = np.array([cmd_dir],np.float32)
-            x_test = chainer.dataset.concat_examples(x, -1)
-            c_test = chainer.dataset.concat_examples(c,-1)
-
-            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-                action_value = self.net(x_test, c_test)
-            return action_value.data[0][0]
+    def act(self, img,dir_cmd):
+            self.net.eval()
+            x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            c_test = torch.tensor(dir_cmd,dtype=torch.float32,device=self.device).unsqueeze(0)
+            #print(x_test.shape,x_test.device,c_test.shape,c_test.device)
+            action_value_test = self.net(x_test_ten,c_test)
+            #print("act = " ,action_value_test.item())
+            return action_value_test.item()
 
     def result(self):
             accuracy = self.accuracy
@@ -109,10 +165,11 @@ class deep_learning:
     def save(self, save_path):
         path = save_path + time.strftime("%Y%m%d_%H:%M:%S")
         os.makedirs(path)
-        chainer.serializers.save_npz(path + '/model.net' , self.net)
+        torch.save(self.net, path + '/model.net')
+
 
     def load(self, load_path):
-        chainer.serializers.load_npz(load_path , self.net)
+        self.net = torch.load(load_path)
 
 if __name__ == '__main__':
         dl = deep_learning()
