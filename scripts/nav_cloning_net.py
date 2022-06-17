@@ -66,11 +66,13 @@ class Net(nn.Module):
 
 class deep_learning:
     def __init__(self, n_channel=3, n_action=1):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.net = Net(n_channel, n_action).to(device)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.net = Net(n_channel, n_action)
+        self.net.to(self.device)
+        print(self.device)
         self.optimizer = optim.Adam(self.net.parameters(), eps=1e-2,weight_decay=5e-4)
         #self.optimizer.setup(self.net.parameters())
-
+        self.totensor = transforms.ToTensor()
         self.n_action = n_action
         self.count = 0
         self.accuracy = 0
@@ -79,38 +81,57 @@ class deep_learning:
         self.loss_list = []
         self.acc_list = []
         self.img_data = []
+        self.dir_list =[]
         self.target_angles = []
         self.criterion = nn.MSELoss()
+        self.transform=transforms.Compose([transforms.ToTensor()])
 
     def act_and_trains(self, imgobj, target_angle):
             self.net.train()
-            x = torch.tensor(imgobj).float()
-            t = torch.tensor(target_angle).float()
+            self.img_data.append(imgobj)
+            self.target_angles.append([target_angle])
+            x = torch.tensor(self.img_data,dtype =torch.float32, device=self.device)
+            # (Batch,Channel,H,W) -> (Batch ,Channel, H,W)
+            x= x.permute(0,3,1,2)
+            t = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
             # self.img_data.append(x[0])
             # self.target_angles.append(t[0])
+            # if len(self.img_data) > MAX_DATA:
+            #     del self.img_data[0]
+            #     del self.target_angles[0]
 
-            if len(self.img_data) > MAX_DATA:
-                del self.img_data[0]
-                del self.target_angles[0]
             dataset = TensorDataset(x,t)
-            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
-            x_train, t_train = random_split(train_dataset)
-
+            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)#train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
+            
+            #only cpu
+            # train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE,shuffle=True)
+            
+            #split dataset
+            for x_train,t_train in train_dataset:
+                x_train.to(self.device)
+                t_train.to(self.device)
+                break
+            
+            #learning
             y_train = self.net(x_train)
-            loss_train = self.criterion(y_train, t_train) #loss
-            loss_train.backward()
+            loss = self.criterion(y_train, t_train) 
+            loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad
             self.count += 1
-            x_test = x
-            action_value = self.net(x_test)
-            return action_value.item(), loss_train.item()
+
+            #test
+            action_value_training = self.net(x)
+            #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
+            return action_value_training[0][0].item(), loss.item()
 
     def act(self, imgobj):
             self.net.eval()
-            x_test = torch.tensor(imgobj)
-            action_value = self.net(x_test)
-            return action_value.item()
+            x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            #print(x_test.shape,x_test.device,c_test.shape,c_test.device)
+            action_value_test = self.net(x_test_ten)
+            #print("act = " ,action_value_test.item())
+            return action_value_test.item()
 
     def result(self):
             accuracy = self.accuracy
