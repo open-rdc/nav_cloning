@@ -6,6 +6,7 @@ import os
 import time
 from os.path import expanduser
 
+
 import torch
 import torchvision
 import torch.nn as nn
@@ -35,7 +36,7 @@ class Net(nn.Module):
         self.fc7 = nn.Linear(260,n_out)
         self.relu = nn.ReLU(inplace=True)
         
-        #self.maxpool = nn.MaxPool2d()
+        self.maxpool = nn.MaxPool2d(2,2)
         self.batch = nn.BatchNorm2d(64)
         self.flatten = nn.Flatten()
         
@@ -46,6 +47,7 @@ class Net(nn.Module):
             self.relu,
             self.conv3,
             self.relu,
+            #self.maxpool,
             self.flatten
         )
         self.fc_layer = nn.Sequential(
@@ -73,6 +75,7 @@ class deep_learning:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = Net(n_channel, n_action)
         self.net.to(self.device)
+        #self.model = TheModelClass(*args, **kwargs)
         print(self.device)
         self.optimizer = optim.Adam(self.net.parameters(), eps=1e-2,weight_decay=5e-4)
         #self.optimizer.setup(self.net.parameters())
@@ -84,52 +87,72 @@ class deep_learning:
         self.results_train['loss'], self.results_train['accuracy'] = [], []
         self.loss_list = []
         self.acc_list = []
-        self.img_data = []
+        # self.img_data = []
         self.dir_list =[]
+        # self.target_angles = []
+        self.datas = []
+        #self.dir_list =np.array([],dtype=np.float32)
         self.target_angles = []
         self.criterion = nn.MSELoss()
         self.transform=transforms.Compose([transforms.ToTensor()])
-
+        self.first_flag =True
 
     def act_and_trains(self, img, dir_cmd,target_angle):
             self.net.train()
 
-            #transform data to tensor
-            self.img_data.append(img)
+        #transform data to tensor
+           
+            data_expanded = np.expand_dims(img,axis=0)
+            self.datas.append(data_expanded)
+        # (n_samples,height,width,channels)
+            img_list = np.concatenate(self.datas,axis=0)
+            # print(img_list.shape)
             self.dir_list.append(dir_cmd)
             self.target_angles.append([target_angle])
-            x = torch.tensor(self.img_data,dtype =torch.float32, device=self.device)
-            # (Batch,Channel,H,W) -> (Batch ,Channel, H,W)
-            x= x.permute(0,3,1,2)
+
+            # if self.first_flag:
+            #     x_cat = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            #     c_cat = torch.tensor(self.dir_list,dtype=torch.float32,device=self.device)
+            #     t_cat = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
+            #     self.first_flag =False
+            
+            # x= torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            x = torch.tensor(img_list,dtype =torch.float32, device=self.device)
             c = torch.tensor(self.dir_list,dtype=torch.float32,device=self.device)
             t = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
+            # x_cat =torch.cat([x_cat,x],dim=0)
+            # c_cat =torch.cat([c_cat,c],dim=0)
+            # t_cat =torch.cat([t_cat,t],dim=0)
+            
+            # print(x_cat.shape)
+            
+        # (Batch,H,W,Channel) -> (Batch ,Channel, H,W)
+            x= x.permute(0,3,1,2)
+           
 
-            # self.img_data.append(x)
-            # self.dir_list.append(c)
-            # self.target_angles.append(t)
-
-            # if len(self.img_data) > MAX_DATA:
+            # if len(self.img_list) > MAX_DATA:
             #     del self.img_data[0]
             #     del self.dir_list[0]
             #     del self.target_angles[0]
             
-            #fix dataset
+        #<make dataset>
             #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
             dataset = TensorDataset(x,c,t)
-            #print(dataset)
-            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)#train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
+        #<dataloder>
+            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)
+            #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
             
-            #only cpu
+            #<only cpu>
             # train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE,shuffle=True)
             
-            #split dataset
+        #<split dataset>
             for x_train, c_train, t_train in train_dataset:
                 x_train.to(self.device)
                 c_train.to(self.device)
                 t_train.to(self.device)
                 break
 
-            #learning
+            #<learning>
             y_train = self.net(x_train,c_train)
             loss = self.criterion(y_train, t_train) 
             loss.backward()
@@ -137,16 +160,19 @@ class deep_learning:
             self.optimizer.zero_grad
             self.count += 1
 
-            #test
+        #<test>
+            # action_value_training = self.net(x,c)
             action_value_training = self.net(x,c)
             #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
             return action_value_training[0][0].item(), loss.item()
 
     def act(self, img,dir_cmd):
             self.net.eval()
+        #<make img,cmd data>
             x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
             c_test = torch.tensor(dir_cmd,dtype=torch.float32,device=self.device).unsqueeze(0)
             #print(x_test.shape,x_test.device,c_test.shape,c_test.device)
+        #<test phase>
             action_value_test = self.net(x_test_ten,c_test)
             #print("act = " ,action_value_test.item())
             return action_value_test.item()
@@ -156,13 +182,15 @@ class deep_learning:
             return accuracy
 
     def save(self, save_path):
+        #<model save>
         path = save_path + time.strftime("%Y%m%d_%H:%M:%S")
         os.makedirs(path)
-        torch.save(self.net, path + '/model.net')
+        torch.save(self.net.state_dict(), path + '/model_gpu.pt')
 
 
     def load(self, load_path):
-        self.net = torch.load(load_path)
+        #<model load>
+        self.net.state_dict(torch.load(load_path))
 
 if __name__ == '__main__':
         dl = deep_learning()

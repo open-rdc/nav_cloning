@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import print_function
+
+from numpy import dtype
 import roslib
 roslib.load_manifest('nav_cloning')
 import rospy
@@ -32,13 +34,14 @@ class nav_cloning_node:
         self.action_num = 1
         self.dl = deep_learning(n_action = self.action_num)
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("/camera_center/rgb/image_raw", Image, self.callback)
+        self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
         self.image_left_sub = rospy.Subscriber("/camera_left/rgb/image_raw", Image, self.callback_left_camera)
         self.image_right_sub = rospy.Subscriber("/camera_right/rgb/image_raw", Image, self.callback_right_camera)
         self.vel_sub = rospy.Subscriber("/nav_vel", Twist, self.callback_vel)
         self.action_pub = rospy.Publisher("action", Int8, queue_size=1)
         self.nav_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.srv = rospy.Service('/training', SetBool, self.callback_dl_training)
+        self.mode_save_srv = rospy.Service('/model_save', Trigger, self.callback_model_save)
         self.pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_pose)
         self.path_sub = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.callback_path)
         self.cmd_dir_sub = rospy.Subscriber("/cmd_dir", Int8MultiArray, self.callback_cmd,queue_size=1)
@@ -122,6 +125,13 @@ class nav_cloning_node:
         resp.success = True
         return resp
 
+    def callback_model_save(self, data):
+        model_res = SetBoolResponse()
+        self.dl.save(self.save_path)
+        model_res.message ="model_save"
+        model_res.success = True
+        return model_res
+
     def loop(self):
         if self.cv_image.size != 640 * 480 * 3:
             return
@@ -134,6 +144,7 @@ class nav_cloning_node:
         if self.is_started == False:
             return
         img = resize(self.cv_image, (48, 64), mode='constant')
+        
         # r, g, b = cv2.split(img)
         # img = np.asanyarray([r,g,b])
 
