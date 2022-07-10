@@ -169,9 +169,11 @@ class deep_learning:
     def act(self, img,dir_cmd):
             self.net.eval()
         #<make img,cmd data>
-            x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            # x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            x_test_ten = torch.tensor(img,dtype=torch.float32, device=self.device).unsqueeze(0)
+            x_test_ten = x_test_ten.permute(0,3,1,2)
             c_test = torch.tensor(dir_cmd,dtype=torch.float32,device=self.device).unsqueeze(0)
-            #print(x_test.shape,x_test.device,c_test.shape,c_test.device)
+            #print(x_test_ten.shape,x_test_ten.device,c_test.shape,c_test.device)
         #<test phase>
             action_value_test = self.net(x_test_ten,c_test)
             #print("act = " ,action_value_test.item())

@@ -1,10 +1,12 @@
-from pyexpat import model
-from turtle import forward
+
+from platform import release
+from pyexpat import features, model
 import numpy as np
 import matplotlib as plt
 import os
 import time
 from os.path import expanduser
+
 
 import torch
 import torchvision
@@ -33,7 +35,7 @@ class Net(nn.Module):
         self.fc5 = nn.Linear(512,n_out)
         self.relu = nn.ReLU(inplace=True)
         
-        #self.maxpool = nn.MaxPool2d()
+        self.maxpool = nn.MaxPool2d(2,2)
         self.batch = nn.BatchNorm2d(64)
         self.flatten = nn.Flatten()
         
@@ -44,15 +46,17 @@ class Net(nn.Module):
             self.relu,
             self.conv3,
             self.relu,
+            #self.maxpool,
             self.flatten
         )
         self.fc_layer = nn.Sequential(
             self.fc4,
             self.relu,
-            self.fc5
+            self.fc5,
+            self.relu
         )
 
-    def forward(self,x):
+    def forward(self,x,c):
         x1 = self.cnn_layer(x)
         x2 = self.fc_layer(x1)
         return x2
@@ -62,6 +66,7 @@ class deep_learning:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = Net(n_channel, n_action)
         self.net.to(self.device)
+        #self.model = TheModelClass(*args, **kwargs)
         print(self.device)
         self.optimizer = optim.Adam(self.net.parameters(), eps=1e-2,weight_decay=5e-4)
         #self.optimizer.setup(self.net.parameters())
@@ -73,55 +78,89 @@ class deep_learning:
         self.results_train['loss'], self.results_train['accuracy'] = [], []
         self.loss_list = []
         self.acc_list = []
-        self.img_data = []
+        # self.img_data = []
         self.dir_list =[]
+        # self.target_angles = []
+        self.datas = []
         self.target_angles = []
         self.criterion = nn.MSELoss()
         self.transform=transforms.Compose([transforms.ToTensor()])
+        self.first_flag =True
 
-    def act_and_trains(self, imgobj, target_angle):
+    def act_and_trains(self, img,target_angle):
             self.net.train()
-            self.img_data.append(imgobj)
-            self.target_angles.append([target_angle])
-            x = torch.tensor(self.img_data,dtype =torch.float32, device=self.device)
-            # (Batch,Channel,H,W) -> (Batch ,Channel, H,W)
-            x= x.permute(0,3,1,2)
-            t = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
-            # self.img_data.append(x[0])
-            # self.target_angles.append(t[0])
-            # if len(self.img_data) > MAX_DATA:
-            #     del self.img_data[0]
-            #     del self.target_angles[0]
 
-            dataset = TensorDataset(x,t)
-            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)#train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
+        #transform data to tensor
+           
+            data_expanded = np.expand_dims(img,axis=0)
+            self.datas.append(data_expanded)
+        # (n_samples,height,width,channels)
+            img_list = np.concatenate(self.datas,axis=0)
+            # print(img_list.shape)
+            self.target_angles.append([target_angle])
+
+            # if self.first_flag:
+            #     x_cat = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            #     c_cat = torch.tensor(self.dir_list,dtype=torch.float32,device=self.device)
+            #     t_cat = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
+            #     self.first_flag =False
             
-            #only cpu
+            # x= torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            x = torch.tensor(img_list,dtype =torch.float32, device=self.device)
+            t = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
+            # x_cat =torch.cat([x_cat,x],dim=0)
+            # c_cat =torch.cat([c_cat,c],dim=0)
+            # t_cat =torch.cat([t_cat,t],dim=0)
+            
+            # print(x_cat.shape)
+            
+        # (Batch,H,W,Channel) -> (Batch ,Channel, H,W)
+            x= x.permute(0,3,1,2)
+           
+
+            # if len(self.img_list) > MAX_DATA:
+            #     del self.img_data[0]
+            #     del self.dir_list[0]
+            #     del self.target_angles[0]
+            
+        #<make dataset>
+            #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
+            dataset = TensorDataset(x,t)
+        #<dataloder>
+            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)
+            #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
+            
+            #<only cpu>
             # train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE,shuffle=True)
             
-            #split dataset
-            for x_train,t_train in train_dataset:
+        #<split dataset>
+            for x_train, c_train, t_train in train_dataset:
                 x_train.to(self.device)
                 t_train.to(self.device)
                 break
-            
-            #learning
-            y_train = self.net(x_train)
+
+            #<learning>
+            y_train = self.net(x_train,c_train)
             loss = self.criterion(y_train, t_train) 
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad
             self.count += 1
 
-            #test
-            action_value_training = self.net(x)
+        #<test>
+            # action_value_training = self.net(x,c)
+            action_value_training = self.net(x,c)
             #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
             return action_value_training[0][0].item(), loss.item()
 
-    def act(self, imgobj):
+    def act(self, img):
             self.net.eval()
-            x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
-            #print(x_test.shape,x_test.device,c_test.shape,c_test.device)
+        #<make img,cmd data>
+            # x_test_ten = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
+            x_test_ten = torch.tensor(img,dtype=torch.float32, device=self.device).unsqueeze(0)
+            x_test_ten = x_test_ten.permute(0,3,1,2)
+            #print(x_test_ten.shape,x_test_ten.device,c_test.shape,c_test.device)
+        #<test phase>
             action_value_test = self.net(x_test_ten)
             #print("act = " ,action_value_test.item())
             return action_value_test.item()
@@ -131,13 +170,15 @@ class deep_learning:
             return accuracy
 
     def save(self, save_path):
+        #<model save>
         path = save_path + time.strftime("%Y%m%d_%H:%M:%S")
         os.makedirs(path)
-        torch.save(self.net, path + '/model.net')
+        torch.save(self.net.state_dict(), path + '/model_gpu.pt')
 
 
     def load(self, load_path):
-        self.net = torch.load(load_path)
+        #<model load>
+        self.net.state_dict(torch.load(load_path))
 
 if __name__ == '__main__':
         dl = deep_learning()
