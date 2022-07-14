@@ -227,7 +227,7 @@ class nav_cloning_node:
                         action_left,  loss_left  = self.dl.act_and_trains(img_left, self.cmd_dir_data, target_action - 0.2)
                         action_right, loss_right = self.dl.act_and_trains(img_right, self.cmd_dir_data, target_action + 0.2)
                 
-                if distance > 0.15 or angle_error > 0.3:
+                if distance > 0.2 or angle_error > 0.4:
                     self.select_dl = False
                 # if distance > 0.1:
                 #     self.select_dl = False
@@ -273,7 +273,7 @@ class nav_cloning_node:
 
 if __name__ == '__main__':
     rg = nav_cloning_node()
-    DURATION = 0.25
+    DURATION = 0.2
     r = rospy.Rate(1 / DURATION)
     while not rospy.is_shutdown():
         rg.loop()

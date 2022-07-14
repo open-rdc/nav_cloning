@@ -85,7 +85,7 @@ class Net(nn.Module):
 class deep_learning:
     def __init__(self, n_channel=3, n_action=1):
         #tensor device choiece
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.net = Net(n_channel, n_action)
         self.net.to(self.device)
         print(self.device)
@@ -105,50 +105,46 @@ class deep_learning:
         self.criterion = nn.MSELoss()
         self.transform=transforms.Compose([transforms.ToTensor()])
         self.first_flag =True
-        self.writer = SummaryWriter(log_dir="/home/haru/nav_ws/src/nav_cloning/runs",comment="log_1")
+        torch.backends.cudnn.benchmark = True
+        #self.writer = SummaryWriter(log_dir="/home/haru/nav_ws/src/nav_cloning/runs",comment="log_1")
 
     def act_and_trains(self, img, dir_cmd,target_angle):
         
         #Training mode 
             self.net.train()
 
-        #<transform data to tensor>
-            data_expanded = np.expand_dims(img,axis=0)
-            self.datas.append(data_expanded)
-        #<n_samples,height,width,channels>
-            img_list = np.concatenate(self.datas,axis=0)
-            self.dir_list.append(dir_cmd)
-            self.target_angles.append([target_angle])
-
-            # if self.first_flag:
-            #     x_cat = torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
-            #     c_cat = torch.tensor(self.dir_list,dtype=torch.float32,device=self.device)
-            #     t_cat = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
-            #     self.first_flag =False
+            if self.first_flag:
+                self.x_cat = torch.tensor(img,dtype=torch.float32, device=self.device).unsqueeze(0)
+                self.x_cat=self.x_cat.permute(0,3,1,2)
+                self.c_cat = torch.tensor(dir_cmd,dtype=torch.float32,device=self.device).unsqueeze(0)
+                self.t_cat = torch.tensor([target_angle],dtype=torch.float32,device=self.device).unsqueeze(0)
+                self.first_flag =False
             
             # x= torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
         #<To tensor img(x),cmd(c),angle(t)>
-            x = torch.tensor(img_list,dtype =torch.float32, device=self.device)
-            c = torch.tensor(self.dir_list,dtype=torch.float32,device=self.device)
-            t = torch.tensor(self.target_angles,dtype=torch.float32,device=self.device)
-            # x_cat =torch.cat([x_cat,x],dim=0)
-            # c_cat =torch.cat([c_cat,c],dim=0)
-            # t_cat =torch.cat([t_cat,t],dim=0)
-            
+            x = torch.tensor(img,dtype =torch.float32, device=self.device).unsqueeze(0)
+            x=x.permute(0,3,1,2)
+            c = torch.tensor(dir_cmd,dtype=torch.float32,device=self.device).unsqueeze(0)
+            t = torch.tensor([target_angle],dtype=torch.float32,device=self.device).unsqueeze(0)
+            self.x_cat =torch.cat([self.x_cat,x],dim=0)
+            #print("x_shape ",self.x_cat.shape)
+            self.c_cat =torch.cat([self.c_cat,c],dim=0)
+            self.t_cat =torch.cat([self.t_cat,t],dim=0)
         # <(Batch,H,W,Channel) -> (Batch ,Channel, H,W)>
-            x= x.permute(0,3,1,2)
+            
            
 
-            if len(img_list) > MAX_DATA:
-                del img_list[0]
-                del self.dir_list[0]
-                del self.target_angles[0]
+            # if len(img_list) > MAX_DATA:
+            #     del img_list[0]
+            #     del self.dir_list[0]
+            #     del self.target_angles[0]
             
         #<make dataset>
             #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
-            dataset = TensorDataset(x,c,t)
+            dataset = TensorDataset(self.x_cat,self.c_cat,self.t_cat)
         #<dataloder>
             train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)
+            #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),pin_memory=True,num_workers=2,shuffle=True)
             #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
             
         #<only cpu>
@@ -156,9 +152,9 @@ class deep_learning:
             
         #<split dataset and to device>
             for x_train, c_train, t_train in train_dataset:
-                x_train.to(self.device)
-                c_train.to(self.device)
-                t_train.to(self.device)
+                x_train.to(self.device,non_blocking=True)
+                c_train.to(self.device,non_blocking=True)
+                t_train.to(self.device,non_blocking=True)
                 break
 
         #<learning>
@@ -168,18 +164,18 @@ class deep_learning:
             loss.backward()
             self.optimizer.step()
             self.count += 1
-            self.writer.add_scalar("loss",loss,self.count)
+            #self.writer.add_scalar("loss",loss,self.count)
             
         #<test>
             #self.net.eval()
             action_value_training = self.net(x,c)
-            self.writer.add_scalar("angle",abs(action_value_training[0][0].item()-target_angle),self.count)
+            #self.writer.add_scalar("angle",abs(action_value_training[0][0].item()-target_angle),self.count)
             #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
 
             # if self.first_flag:
             #     self.writer.add_graph(self.net,(x,c))
-            self.writer.close()
-            self.writer.flush()
+            #self.writer.close()
+            #self.writer.flush()
             return action_value_training[0][0].item(), loss.item()
 
     def act(self, img,dir_cmd):
