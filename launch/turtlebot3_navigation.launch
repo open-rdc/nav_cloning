@@ -43,7 +43,7 @@
     </node>
   </group>
   <group if="$(arg use_waypoint_nav)">
-    <node name="waypoint_nav" pkg="waypoint_nav" type="waypoint_navigator" output="screen">
+    <node name="waypoint_nav" pkg="waypoint_nav" type="waypoint_navigator_with_direction" output="screen">
       <param name="filename" value="$(arg waypoints_file)"/>
       <param name="dist_err" value="$(arg dist_err)"/>
       <param name="max_update_rate" value="$(arg rate)"/>
