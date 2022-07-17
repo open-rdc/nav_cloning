@@ -39,7 +39,8 @@ angle_error : navigationの出力と訓練されたモデルの出力の差 \
 distance : 目標経路とロボットの位置の間の距離
 
 ## install
-* 環境 ubuntu18.04, ros melodic
+* 環境 ubuntu２０.04, ros noetic
+      Python 3系
 
 * ワークスペースの用意
 ```
@@ -47,7 +48,7 @@ mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src
 catkin_init_workspace
 cd ../
-catkin_make
+catkin_build
 ```
 * nav_cloningの用意
 ```
@@ -66,26 +67,25 @@ cd ../
 catkin_make
 ```
 * その他インストール
-```
-sudo apt install python-pip
-pip install chainer==6.0
-pip install scikit-image
-```
-## Docker
-* Usage
-example:
-1. 起動
-```
-cd ~/catkin_ws/src/nav_cloning/docker
-docker-compose up
-```
-or
-```
-docker pull -p 8080:80 masayaokada/nav_cloning:open-rdc
-```
-2. アクセス
-Access to http://localhost:8080
+GPUを使用するかでインストールするものが変わります．
+GPU関連の設定は細心の注意をはらっておこなってください．
 
-### Data Analysis
-https://github.com/open-rdc/nav_cloning/wiki
+<共通>
+pip３ install scikit-image
+pip3 install tensorboard
+<CPU のみ>
+```
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+```
+<GPU使用>
+使用しているデバイスを確認し，セットアップします
+・nvidia driver
+・CUDA
+・cuDNN
+
+その後インストールしたCUDAのバージョンに対応したPytorchのバージョンを下記からダウンロードします
+https://pytorch.org/get-started/locally/
+
+## Docker
+作成次第追加
 
