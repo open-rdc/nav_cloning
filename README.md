@@ -71,21 +71,24 @@ GPUを使用するかでインストールするものが変わります．
 GPU関連の設定は細心の注意をはらっておこなってください．
 
 <共通>
-pip３ install scikit-image
+```
+pip３ install scikit-image　　
 pip3 install tensorboard
+```
 <CPU のみ>
 ```
 pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
 ```
 <GPU使用>
 使用しているデバイスを確認し，セットアップします
-・nvidia driver
-・CUDA
-・cuDNN
+* nvidia driver
+* CUDA 
+* cuDNN 
 
 その後インストールしたCUDAのバージョンに対応したPytorchのバージョンを下記からダウンロードします
+```
 https://pytorch.org/get-started/locally/
-
+```
 ## Docker
 作成次第追加
 
