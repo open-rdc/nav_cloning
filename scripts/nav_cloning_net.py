@@ -38,7 +38,7 @@ class Net(nn.Module):
         torch.nn.init.kaiming_normal_(self.conv2.weight)
         torch.nn.init.kaiming_normal_(self.conv3.weight)
         torch.nn.init.kaiming_normal_(self.fc4.weight)
-        torch.nn.init.kaiming_normal_(self.fc5.weight)
+        # torch.nn.init.kaiming_normal_(self.fc5.weight)
         #self.maxpool = nn.MaxPool2d(2,2)
         #self.batch = nn.BatchNorm2d(0.2)
         self.flatten = nn.Flatten()
@@ -58,11 +58,11 @@ class Net(nn.Module):
             self.fc4,
             self.relu,
             self.fc5,
-            self.relu
+
         )
 
     #<forward layer>
-    def forward(self,x,c):
+    def forward(self,x):
         x1 = self.cnn_layer(x)
         x2 = self.fc_layer(x1)
         return x2
@@ -121,32 +121,34 @@ class deep_learning:
             dataset = TensorDataset(self.x_cat,self.t_cat)
         #<dataloder>
             train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)
-            #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),pin_memory=True,num_workers=2,shuffle=True)
-            #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
             
         #<only cpu>
             # train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE,shuffle=True)
             
         #<split dataset and to device>
-            for x_train, c_train, t_train in train_dataset:
+            for x_train, t_train in train_dataset:
                 x_train.to(self.device,non_blocking=True)
                 t_train.to(self.device,non_blocking=True)
                 break
 
         #<learning>
-            self.optimizer.zero_grad
-            y_train = self.net(x_train,c_train)
+            # print(t_train)
+            self.optimizer.zero_grad()
+            # self.net.zero_grad()
+            y_train = self.net(x_train)
+            # print(y_train,t_train)
             loss = self.criterion(y_train, t_train) 
             loss.backward()
+            # self.optimizer.zero_grad
             self.optimizer.step()
-            self.count += 1
             #self.writer.add_scalar("loss",loss,self.count)
             
         #<test>
-            #self.net.eval()
+            self.net.eval()
             action_value_training = self.net(x)
             #self.writer.add_scalar("angle",abs(action_value_training[0][0].item()-target_angle),self.count)
-            #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
+            # print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
+            # print("action=" ,action_value_training.item() ,"loss=" ,loss.item())
 
             # if self.first_flag:
             #     self.writer.add_graph(self.net,(x,c))
@@ -159,6 +161,7 @@ class deep_learning:
                 self.first_flag=True
                 print("reset dataset")
             
+            # return action_value_training.item(), loss.item()
             return action_value_training[0][0].item(), loss.item()
 
     def act(self, img):
@@ -171,7 +174,7 @@ class deep_learning:
         #<test phase>
             action_value_test = self.net(x_test_ten)
             
-            #print("act = " ,action_value_test.item())
+            print("act = " ,action_value_test.item())
             return action_value_test.item()
 
     def result(self):

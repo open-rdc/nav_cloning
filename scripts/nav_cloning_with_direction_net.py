@@ -47,6 +47,7 @@ class Net(nn.Module):
         torch.nn.init.kaiming_normal_(self.fc5.weight)
         torch.nn.init.kaiming_normal_(self.fc6.weight)
         torch.nn.init.kaiming_normal_(self.fc7.weight)
+        #self.fc7.weight = nn.Parameter(torch.zeros(n_channel,260))
         #self.maxpool = nn.MaxPool2d(2,2)
         #self.batch = nn.BatchNorm2d(0.2)
         self.flatten = nn.Flatten()
@@ -134,11 +135,8 @@ class deep_learning:
             
            
 
-            # if len(img_list) > MAX_DATA:
-            #     del img_list[0]
-            #     del self.dir_list[0]
-            #     del self.target_angles[0]
-            
+  
+
         #<make dataset>
             #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
             dataset = TensorDataset(self.x_cat,self.c_cat,self.t_cat)
@@ -158,8 +156,9 @@ class deep_learning:
                 break
 
         #<learning>
-            self.optimizer.zero_grad
+            self.optimizer.zero_grad()
             y_train = self.net(x_train,c_train)
+            #print("y_train=",y_train.shape,"t_train",t_train.shape)
             loss = self.criterion(y_train, t_train) 
             loss.backward()
             self.optimizer.step()
@@ -167,15 +166,23 @@ class deep_learning:
             #self.writer.add_scalar("loss",loss,self.count)
             
         #<test>
-            #self.net.eval()
+            self.net.eval()
             action_value_training = self.net(x,c)
             #self.writer.add_scalar("angle",abs(action_value_training[0][0].item()-target_angle),self.count)
-            #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
+            print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
 
             # if self.first_flag:
             #     self.writer.add_graph(self.net,(x,c))
             #self.writer.close()
             #self.writer.flush()
+        #<reset dataset>
+            if self.x_cat.size()[0] > MAX_DATA:
+                self.x_cat = torch.empty(1,3,48,64).to(self.device)
+                self.dir_list = torch.empty(1,4).to(self.device)
+                self.target_angles =torch.empty(1,1).to(self.device)
+                self.first_flag=True
+                print("reset dataset")
+            
             return action_value_training[0][0].item(), loss.item()
 
     def act(self, img,dir_cmd):
@@ -190,7 +197,7 @@ class deep_learning:
             action_value_test = self.net(x_test_ten,c_test)
             
             #print("act = " ,action_value_test.item())
-            return action_value_test.item()
+            return action_value_test[0][0].item()
 
     def result(self):
             accuracy = self.accuracy

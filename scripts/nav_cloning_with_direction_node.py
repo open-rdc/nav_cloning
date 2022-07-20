@@ -57,7 +57,8 @@ class nav_cloning_node:
         self.select_dl = False
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_with_dir_'+str(self.mode)+'/'
-        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_with_dir_'+str(self.mode)+'/'
+        self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_with_dir_'+str(self.mode)+'/pytorch/'
+        self.load_path =roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_with_dir_'+str(self.mode)+'/test/model_gpu.pt'
         self.previous_reset_time = 0
         self.pos_x = 0.0
         self.pos_y = 0.0
@@ -158,12 +159,17 @@ class nav_cloning_node:
         # cmd_dir = np.asanyarray(self.cmd_dir_data)
         ros_time = str(rospy.Time.now())
 
+        # if self.episode == 0:
+        #     self.learning = True
+        #     #self.dl.save(self.save_path)
+        #     self.dl.load(self.load_path)
+        #     print("load model",self.load_path)
+        
         if self.episode == 60000:
             self.learning = False
             self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
-
-        if self.episode == 70000:
+        if self.episode == 90000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -212,7 +218,7 @@ class nav_cloning_node:
 
             elif self.mode == "follow_line":
                 action, loss = self.dl.act_and_trains(img, self.cmd_dir_data, target_action)
-                if abs(target_action) < 0.1:
+                if abs(target_action) < 0.2:#0.1
                     action_left,  loss_left  = self.dl.act_and_trains(img_left, self.cmd_dir_data, target_action - 0.2)
                     action_right, loss_right = self.dl.act_and_trains(img_right, self.cmd_dir_data, target_action + 0.2)
                 angle_error = abs(action - target_action)
@@ -223,11 +229,11 @@ class nav_cloning_node:
                 loss = 0
                 if angle_error > 0.05:
                     action, loss = self.dl.act_and_trains(img, self.cmd_dir_data, target_action)
-                    if abs(target_action) < 0.1:
+                    if abs(target_action) < 0.15: #0.1
                         action_left,  loss_left  = self.dl.act_and_trains(img_left, self.cmd_dir_data, target_action - 0.2)
                         action_right, loss_right = self.dl.act_and_trains(img_right, self.cmd_dir_data, target_action + 0.2)
                 
-                if distance > 0.2 or angle_error > 0.4:
+                if distance > 0.15 or angle_error > 0.3:
                     self.select_dl = False
                 # if distance > 0.1:
                 #     self.select_dl = False
@@ -249,7 +255,12 @@ class nav_cloning_node:
             self.nav_pub.publish(self.vel)
 
         else:
+            #print('\033[32m'+'test_mode'+'\033[0m')
             target_action = self.dl.act(img, self.cmd_dir_data)
+            if abs(target_action) >1.82:
+                target_action=1.82
+            else:
+                pass
             distance = self.min_distance
             print(str(self.episode) + ", test, angular:" + str(target_action) + ", distance: " + str(distance) + ", self.cmd_dir_data: " + str(self.cmd_dir_data))
 
