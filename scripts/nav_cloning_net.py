@@ -89,7 +89,7 @@ class deep_learning:
         self.criterion = nn.MSELoss()
         self.transform=transforms.Compose([transforms.ToTensor()])
         self.first_flag =True
-        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.benchmark = False
         #self.writer = SummaryWriter(log_dir="/home/haru/nav_ws/src/nav_cloning/runs",comment="log_1")
 
     def act_and_trains(self, img,target_angle):

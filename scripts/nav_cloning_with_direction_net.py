@@ -31,6 +31,7 @@ class Net(nn.Module):
     def __init__(self, n_channel, n_out):
         super().__init__()
     #Network CNN 3 + FC 2 + fc2 
+       # nn. is with parameters to be adjusted 
         self.conv1 = nn.Conv2d(n_channel, 32,kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32,64,kernel_size=3, stride=2)
         self.conv3 = nn.Conv2d(64,64, kernel_size=3, stride=1)
@@ -91,7 +92,6 @@ class deep_learning:
         self.net.to(self.device)
         print(self.device)
         self.optimizer = optim.Adam(self.net.parameters(),eps=1e-2,weight_decay=5e-4)
-        #self.optimizer.setup(self.net.parameters())
         self.totensor = transforms.ToTensor()
         self.n_action = n_action
         self.count = 0
@@ -106,12 +106,12 @@ class deep_learning:
         self.criterion = nn.MSELoss()
         self.transform=transforms.Compose([transforms.ToTensor()])
         self.first_flag =True
-        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.benchmark = False
         #self.writer = SummaryWriter(log_dir="/home/haru/nav_ws/src/nav_cloning/runs",comment="log_1")
 
     def act_and_trains(self, img, dir_cmd,target_angle):
         
-        #Training mode 
+        #<Training mode> 
             self.net.train()
 
             if self.first_flag:
@@ -124,29 +124,20 @@ class deep_learning:
             # x= torch.tensor(self.transform(img),dtype=torch.float32, device=self.device).unsqueeze(0)
         #<To tensor img(x),cmd(c),angle(t)>
             x = torch.tensor(img,dtype =torch.float32, device=self.device).unsqueeze(0)
+            # <(Batch,H,W,Channel) -> (Batch ,Channel, H,W)>
             x=x.permute(0,3,1,2)
             c = torch.tensor(dir_cmd,dtype=torch.float32,device=self.device).unsqueeze(0)
             t = torch.tensor([target_angle],dtype=torch.float32,device=self.device).unsqueeze(0)
             self.x_cat =torch.cat([self.x_cat,x],dim=0)
-            #print("x_shape ",self.x_cat.shape)
             self.c_cat =torch.cat([self.c_cat,c],dim=0)
             self.t_cat =torch.cat([self.t_cat,t],dim=0)
-        # <(Batch,H,W,Channel) -> (Batch ,Channel, H,W)>
-            
-           
-
-  
-
+        
         #<make dataset>
             #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
             dataset = TensorDataset(self.x_cat,self.c_cat,self.t_cat)
         #<dataloder>
             train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)
             #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),pin_memory=True,num_workers=2,shuffle=True)
-            #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator(device=self.device),shuffle=True)
-            
-        #<only cpu>
-            # train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE,shuffle=True)
             
         #<split dataset and to device>
             for x_train, c_train, t_train in train_dataset:
@@ -162,14 +153,14 @@ class deep_learning:
             loss = self.criterion(y_train, t_train) 
             loss.backward()
             self.optimizer.step()
-            self.count += 1
+            #self.count += 1
             #self.writer.add_scalar("loss",loss,self.count)
             
         #<test>
             self.net.eval()
             action_value_training = self.net(x,c)
             #self.writer.add_scalar("angle",abs(action_value_training[0][0].item()-target_angle),self.count)
-            print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
+            #print("action=" ,action_value_training[0][0].item() ,"loss=" ,loss.item())
 
             # if self.first_flag:
             #     self.writer.add_graph(self.net,(x,c))
@@ -208,11 +199,13 @@ class deep_learning:
         path = save_path + time.strftime("%Y%m%d_%H:%M:%S")
         os.makedirs(path)
         torch.save(self.net.state_dict(), path + '/model_gpu.pt')
+        print("save_model")
 
 
     def load(self, load_path):
         #<model load>
         self.net.state_dict(torch.load(load_path))
+        print("load_model =", load_path)
 
 if __name__ == '__main__':
         dl = deep_learning()
