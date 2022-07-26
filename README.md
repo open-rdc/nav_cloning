@@ -39,8 +39,10 @@ angle_error : navigationの出力と訓練されたモデルの出力の差 \
 distance : 目標経路とロボットの位置の間の距離
 
 ## install
-* 環境 ubuntu２０.04, ros noetic
-      Python 3系
+* 環境 
+  * ubuntu20.04
+  * ros noetic
+  * Python 3系
 
 * ワークスペースの用意
 ```
