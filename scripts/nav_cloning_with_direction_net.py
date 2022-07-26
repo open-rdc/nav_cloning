@@ -88,11 +88,13 @@ class deep_learning:
     def __init__(self, n_channel=3, n_action=1):
         #tensor device choiece
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        torch.manual_seed(0)
         self.net = Net(n_channel, n_action)
         self.net.to(self.device)
         print(self.device)
         self.optimizer = optim.Adam(self.net.parameters(),eps=1e-2,weight_decay=5e-4)
         self.totensor = transforms.ToTensor()
+        self.transform_color = transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5)
         self.n_action = n_action
         self.count = 0
         self.accuracy = 0
@@ -107,6 +109,7 @@ class deep_learning:
         self.transform=transforms.Compose([transforms.ToTensor()])
         self.first_flag =True
         torch.backends.cudnn.benchmark = False
+        
         #self.writer = SummaryWriter(log_dir="/home/haru/nav_ws/src/nav_cloning/runs",comment="log_1")
 
     def act_and_trains(self, img, dir_cmd,target_angle):
@@ -136,7 +139,7 @@ class deep_learning:
             #print("train x =",x.shape,x.device,"train c =" ,c.shape,c.device,"tarain t = " ,t.shape,t.device)
             dataset = TensorDataset(self.x_cat,self.c_cat,self.t_cat)
         #<dataloder>
-            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),shuffle=True)
+            train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu').manual_seed(0),shuffle=True)
             #train_dataset = DataLoader(dataset, batch_size=BATCH_SIZE, generator=torch.Generator('cpu'),pin_memory=True,num_workers=2,shuffle=True)
             
         #<split dataset and to device>
@@ -145,7 +148,8 @@ class deep_learning:
                 c_train.to(self.device,non_blocking=True)
                 t_train.to(self.device,non_blocking=True)
                 break
-
+        #<use data augmentation>
+            x_train = self.transform_color(x_train)
         #<learning>
             self.optimizer.zero_grad()
             y_train = self.net(x_train,c_train)
