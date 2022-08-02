@@ -21,18 +21,29 @@ def draw_training_pos():
     ax.imshow(arr, cmap='gray', extent=[-10,50,-10,50])
     vel = 0.2
     arrow_dict = dict(arrowstyle = "->", color = "black")
-    count = 0
-    with open(path + 'use_dl_output/training.csv', 'r') as f:
-    #with open(path + 'follow_line/training.csv', 'r') as f:
+    episode = []
+    x = []
+    y = []
+    reset_count = []
+    draw_num = 10
+    previous_reset_count = 0
+    num = 0
+    # with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/robot_move/use_dl_output/trajectory.csv', 'r') as f:
+    # with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/robot_move/follow_line/test/trajectory.csv', 'r') as f:
+    with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/robot_move/300_use_dl_output/trajectory.csv', 'r') as f:
+    # with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/robot_move/300_follow_line/trajectory.csv', 'r') as f:
         for row in csv.reader(f):
-            str_step, str_x, str_y, str_the = row
-            step, x, y, the = int(str_step), float(str_x), float(str_y), float(str_the)
-            if step == 50:
-                count+=1
-            if step > 0:
-              for i in range(869,876): # about 445 = first_turn , 575 , 715, 869
-                if count == i:
-                    patch = Circle(xy=(x, y), radius=0.01, facecolor="gray")
+            str_episode, str_x, str_y, str_reset_count = row
+            episode.append(int(str_episode))
+            x.append(float(str_x))
+            y.append(float(str_y))
+            reset_count.append(int(str_reset_count))
+        for i in episode:
+            num += 1
+            if i == 300:
+                for j in range(300):
+                    for_draw = num - 300 + j
+                    patch = Circle(xy=(x[for_draw], y[for_draw]), radius=0.03, facecolor="gray") 
                     ax.add_patch(patch)
 
 
