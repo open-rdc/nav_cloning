@@ -55,7 +55,7 @@ class nav_cloning_node:
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_'+str(self.mode)+'/'
         self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_'+str(self.mode)+'/'
-        self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/conventional/model.net'
+        # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/conventional/model.net'
         self.previous_reset_time = 0
         self.pos_x = 0.0
         self.pos_y = 0.0
@@ -65,9 +65,9 @@ class nav_cloning_node:
         os.makedirs(self.path + self.start_time)
         self.DURATION = 0.2
 
-        with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/conventional/training.csv', 'w') as f:
-            writer = csv.writer(f, lineterminator='\n')
-            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)', 'the(rad)'])
+        # with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/conventional/training.csv', 'w') as f:
+        #     writer = csv.writer(f, lineterminator='\n')
+        #     writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)', 'the(rad)'])
         self.tracker_sub = rospy.Subscriber("/tracker", Odometry, self.callback_tracker)
 
     def callback(self, data):
