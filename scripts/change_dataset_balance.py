@@ -29,7 +29,7 @@ DURATION = 0.2
 class nav_cloning_node:
     def __init__(self):
         rospy.init_node('nav_cloning_node', anonymous=True)
-        self.mode = rospy.get_param("/nav_cloning_node/mode", "change_dataset_balance")
+        self.mode = rospy.get_param("/nav_cloning_node/mode", "use_dl_output")
         self.action_num = 1
         self.dl = deep_learning(n_action = self.action_num)
         self.bridge = CvBridge()
@@ -200,36 +200,35 @@ class nav_cloning_node:
                     target_action = action
 
             elif self.mode == "change_dataset_balance":
-                if self.episode < 1:
-                    action, loss = self.dl.act_and_trains(img, target_action)
-                    line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                probability_of_append_dataset = 10 * distance
+                if probability_of_append_dataset > 1:
+                    probability_of_append_dataset = 1
+                print(probability_of_append_dataset)
+                make_dataset_timing = np.random.choice(a = [True,False], size = 1,p = [probability_of_append_dataset,1-probability_of_append_dataset])
+                self.dl.make_dataset(img, target_action)
+                line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
+                    writer = csv.writer(f, lineterminator='\n')
+                    writer.writerow(line)
+                if make_dataset_timing[0]:
+                    self.dl.make_dataset(img, target_action)
                     with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
                         writer = csv.writer(f, lineterminator='\n')
                         writer.writerow(line)
-                    if abs(target_action) < 0.1:
-                        action_left,  loss_left  = self.dl.act_and_trains(img_left, target_action - 0.2)
-                        action_right, loss_right = self.dl.act_and_trains(img_right, target_action + 0.2)
-                else:
-                    probability_of_append_dataset = 10 * distance + 0.5
-                    if probability_of_append_dataset > 1:
-                        probability_of_append_dataset = 1
-                    print(probability_of_append_dataset)
-                    make_dataset_timing = np.random.choice(a = [True,False], size = 1,p = [probability_of_append_dataset,1-probability_of_append_dataset])
-                    if make_dataset_timing[0]:
-                        self.dl.make_dataset(img, target_action)
-                        line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
-                        with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
-                            writer = csv.writer(f, lineterminator='\n')
-                            writer.writerow(line)
-                    loss = self.dl.trains()
-                    action = self.dl.act(img)
+                loss = self.dl.trains()
+                action = self.dl.act(img)
 
+
+                if abs(target_action) < 0.1:
                     if make_dataset_timing[0]:
-                        if abs(target_action) < 0.1:
-                            self.dl.make_dataset(img_left, target_action - 0.2)
-                            loss = self.dl.trains()
-                            self.dl.make_dataset(img_right, target_action + 0.2)
-                            loss = self.dl.trains()
+                        self.dl.make_dataset(img_left, target_action - 0.2)
+                        self.dl.make_dataset(img_right, target_action + 0.2)
+                    self.dl.make_dataset(img_left, target_action - 0.2)
+                    loss = self.dl.trains()
+                    self.dl.make_dataset(img_right, target_action + 0.2)
+                    loss = self.dl.trains()
+                # loss = self.dl.trains()
+                # loss = self.dl.trains()
                 angle_error = abs(action - target_action)
                 if distance > 0.1:
                     self.select_dl = False
@@ -246,28 +245,42 @@ class nav_cloning_node:
                 angle_error = abs(action - target_action)
 
             elif self.mode == "selected_training":
-                if distance < 0.1:
-                    self.DURATION = -0.01 * distance + 0.2
-                elif distance >= 0.1:
-                    self.DURATION = 0.0001
-                action = self.dl.act(imgobj)
+                probability_of_append_dataset = 10 * distance
+                if probability_of_append_dataset > 1:
+                    probability_of_append_dataset = 1
+                print(probability_of_append_dataset)
+                make_dataset_timing = np.random.choice(a = [True,False], size = 1,p = [probability_of_append_dataset,1-probability_of_append_dataset])
+                action = self.dl.act(img)
                 angle_error = abs(action - target_action)
                 loss = 0
                 if angle_error > 0.05:
-                    action, loss = self.dl.act_and_trains(imgobj, target_action)
+                    if make_dataset_timing[0]:
+                        self.dl.make_dataset(img,target_action)
+                        line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                        with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
+                            writer = csv.writer(f, lineterminator='\n')
+                            writer.writerow(line)
+                    action, loss = self.dl.act_and_trains(img, target_action)
+                    line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                    with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
+                        writer = csv.writer(f, lineterminator='\n')
+                        writer.writerow(line)
                     if abs(target_action) < 0.1:
-                        action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                        action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
+                        if make_dataset_timing[0]:
+                            self.dl.make_dataset(img_left,target_action - 0.2)
+                            self.dl.make_dataset(img_right,target_action + 0.2)
+                        action_left,  loss_left  = self.dl.act_and_trains(img_left, target_action - 0.2)
+                        action_right, loss_right = self.dl.act_and_trains(img_right, target_action + 0.2)
                 if distance > 0.1:
                     self.select_dl = False
                 elif distance < 0.05:
                     self.select_dl = True
                 if self.select_dl and self.episode >= 0:
                     target_action = action
-                line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
-                with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
-                    writer = csv.writer(f, lineterminator='\n')
-                    writer.writerow(line)
+                # line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                # with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
+                #     writer = csv.writer(f, lineterminator='\n')
+                #     writer.writerow(line)
 
             # end mode
 
