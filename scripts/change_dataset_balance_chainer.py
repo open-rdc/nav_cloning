@@ -29,7 +29,7 @@ DURATION = 0.2
 class nav_cloning_node:
     def __init__(self):
         rospy.init_node('nav_cloning_node', anonymous=True)
-        self.mode = rospy.get_param("/nav_cloning_node/mode", "use_dl_output")
+        self.mode = rospy.get_param("/nav_cloning_node/mode", "change_dataset_balance")
         self.action_num = 1
         self.dl = deep_learning(n_action = self.action_num)
         self.bridge = CvBridge()
@@ -145,12 +145,12 @@ class nav_cloning_node:
 
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 4000:
+        if self.episode == 8000:
             self.learning = False
             self.dl.save(self.save_path)
             # self.dl.load(self.load_path)
 
-        if self.episode == 6000:
+        if self.episode == 10000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -323,7 +323,7 @@ class nav_cloning_node:
             self.nav_pub.publish(self.vel)
 
         else:
-            target_action = self.dl.act(img)
+            target_action = self.dl.act(imgobj)
             distance = self.min_distance
             self.episode += 1
             print("TEST MODE: " + "episode:" + str(self.episode) + ", angular:" + str(target_action) + ", distance: " + str(distance))
