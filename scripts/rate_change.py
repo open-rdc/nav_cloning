@@ -164,7 +164,7 @@ class nav_cloning_node:
 
 
                 # if distance < 0.1:
-                #     self.DURATION = 2 * distance + 0.4
+                #     self.DURATION = 2 * distance + 0.2
                 # elif distance >= 0.1:
                 #     self.DURATION = 0.4
 
