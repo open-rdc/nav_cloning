@@ -170,12 +170,12 @@ class nav_cloning_node:
 
 
 
-                action, loss = self.dl.act_and_trains(img , target_action)
+                action, loss = self.dl.act_and_trains(imgobj , target_action)
                 self.step += 1
                 if abs(target_action) < 0.1:
-                    action_left,  loss_left  = self.dl.act_and_trains(img_left , target_action - 0.2)
+                    action_left,  loss_left  = self.dl.act_and_trains(imgobj_left , target_action - 0.2)
                     self.step += 1
-                    action_right, loss_right = self.dl.act_and_trains(img_right , target_action + 0.2)
+                    action_right, loss_right = self.dl.act_and_trains(imgobj_right , target_action + 0.2)
                     self.step += 1
 
 
@@ -203,7 +203,7 @@ class nav_cloning_node:
             self.nav_pub.publish(self.vel)
 
         else:
-            target_action = self.dl.act(img)
+            target_action = self.dl.act(imgobj)
             distance = self.min_distance
             self.episode += 1
             print("TEST MODE: " + "episode:" + str(self.episode) + ", angular:" + str(target_action) + ", distance: " + str(distance))
