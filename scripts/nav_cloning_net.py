@@ -13,7 +13,7 @@ import time
 from os.path import expanduser
 
 # HYPER PARAM
-BATCH_SIZE = 8 
+BATCH_SIZE = 8
 MAX_DATA = 10000
 
 class Net(chainer.Chain):
@@ -52,18 +52,18 @@ class deep_learning:
         self.data = []
         self.target_angles = []
 
-    def make_dataset(self, imgobj, target_angle):
-            self.x = [self.phi(s) for s in [imgobj]]
-            self.t = np.array([target_angle], np.float32)
-            self.data.append(self.x[0])
-            self.target_angles.append(self.t[0])
+    def add_data(self, imgobj, target_angle):
+            x = [self.phi(s) for s in [imgobj]]
+            t = np.array([target_angle], np.float32)
+            self.data.append(x[0])
+            self.target_angles.append(t[0])
             if len(self.data) > MAX_DATA:
                 del self.data[0]
                 del self.target_angles[0]
-            self.dataset = TupleDataset(self.data, self.target_angles)
 
     def trains(self):
-            train_iter = SerialIterator(self.dataset, batch_size = BATCH_SIZE, repeat=True, shuffle=True)
+            dataset = TupleDataset(self.data, self.target_angles)
+            train_iter = SerialIterator(dataset, batch_size = BATCH_SIZE, repeat=True, shuffle=True)
             train_batch  = train_iter.next()
             x_train, t_train = chainer.dataset.concat_examples(train_batch, -1)
 
@@ -82,17 +82,13 @@ class deep_learning:
             return loss_train.array
 
     def act_and_trains(self, imgobj, target_angle):
-            self.make_dataset(imgobj, target_angle)
+            self.add_data(imgobj, target_angle)
             loss = self.trains()
-
-            x_test = chainer.dataset.concat_examples(self.x, -1)
-            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-                action_value = self.net(x_test)
-            return action_value.data[0][0], loss
+            return self.act(imgobj), loss
 
     def act(self, imgobj):
-            self.x = [self.phi(s) for s in [imgobj]]
-            x_test = chainer.dataset.concat_examples(self.x, -1)
+            x = [self.phi(s) for s in [imgobj]]
+            x_test = chainer.dataset.concat_examples(x, -1)
 
             with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
                 action_value = self.net(x_test)

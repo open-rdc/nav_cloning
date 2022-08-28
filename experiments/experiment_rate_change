@@ -1,5 +1,0 @@
-for i in `seq 10`
-do
-  roslaunch nav_cloning nav_cloning_sim.launch scripts:=rate_change.py
-  sleep 20
-done
