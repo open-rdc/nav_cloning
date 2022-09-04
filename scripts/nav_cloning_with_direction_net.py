@@ -37,8 +37,8 @@ class Net(nn.Module):
         self.conv3 = nn.Conv2d(64,64, kernel_size=3, stride=1)
         self.fc4 = nn.Linear(960, 512)
         self.fc5 = nn.Linear(512,256)
-        self.fc6 = nn.Linear(260, 260)
-        self.fc7 = nn.Linear(260,n_out)
+        self.fc6 = nn.Linear(259, 259)
+        self.fc7 = nn.Linear(259,n_out)
         self.relu = nn.ReLU(inplace=True)
     #Weight set
         torch.nn.init.kaiming_normal_(self.conv1.weight)
@@ -173,7 +173,8 @@ class deep_learning:
         #<reset dataset>
             if self.x_cat.size()[0] > MAX_DATA:
                 self.x_cat = torch.empty(1,3,48,64).to(self.device)
-                self.dir_list = torch.empty(1,4).to(self.device)
+                # self.dir_list = torch.empty(1,4).to(self.device)
+                self.dir_list = torch.empty(1,3).to(self.device)
                 self.target_angles =torch.empty(1,1).to(self.device)
                 self.first_flag=True
                 print("reset dataset")
