@@ -8,7 +8,7 @@ import rospy
 import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from nav_cloning_with_direction_net import *
+from nav_cloning_mobilenetv2 import *
 from skimage.transform import resize
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseArray
@@ -153,12 +153,12 @@ class nav_cloning_node:
         #img_right = np.asanyarray([r,g,b])
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 60000:
+        if self.episode == 5000:
             self.learning = False
             self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
 
-        if self.episode == 70000:
+        if self.episode == 7000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -258,17 +258,17 @@ class nav_cloning_node:
             self.vel.angular.z = target_action
             self.nav_pub.publish(self.vel)
 
-        temp = copy.deepcopy(img)
-        cv2.imshow("Resized Image", temp)
-        temp = copy.deepcopy(img_left)
-        cv2.imshow("Resized Left Image", temp)
-        temp = copy.deepcopy(img_right)
-        cv2.imshow("Resized Right Image", temp)
-        cv2.waitKey(1)
+        # temp = copy.deepcopy(img)
+        # cv2.imshow("Resized Image", temp)
+        # temp = copy.deepcopy(img_left)
+        # cv2.imshow("Resized Left Image", temp)
+        # temp = copy.deepcopy(img_right)
+        # cv2.imshow("Resized Right Image", temp)
+        # cv2.waitKey(1)
 
 if __name__ == '__main__':
     rg = nav_cloning_node()
-    DURATION = 0.2
+    DURATION = 0.25
     r = rospy.Rate(1 / DURATION)
     while not rospy.is_shutdown():
         rg.loop()
