@@ -55,7 +55,7 @@ catkin_build
 * nav_cloningの用意
 ```
 cd ~/catkin_ws/src
-wget https://raw.githubusercontent.com/open-rdc/nav_cloning//nav_cloning.install
+wget https://raw.githubusercontent.com/open-rdc/nav_cloning/pytorch/nav_cloning.install
 wstool init
 wstool merge nav_cloning.install
 wstool up
