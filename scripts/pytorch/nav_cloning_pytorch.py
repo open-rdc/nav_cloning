@@ -38,7 +38,7 @@ class Net(nn.Module):
         torch.nn.init.kaiming_normal_(self.conv2.weight)
         torch.nn.init.kaiming_normal_(self.conv3.weight)
         torch.nn.init.kaiming_normal_(self.fc4.weight)
-        # torch.nn.init.kaiming_normal_(self.fc5.weight)
+        torch.nn.init.kaiming_normal_(self.fc5.weight)
         #self.maxpool = nn.MaxPool2d(2,2)
         #self.batch = nn.BatchNorm2d(0.2)
         self.flatten = nn.Flatten()
