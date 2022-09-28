@@ -6,7 +6,7 @@ import rospy
 import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from nav_cloning_pytorch import *
+from nav_cloning_add_limit import *
 from skimage.transform import resize
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseArray
@@ -65,9 +65,10 @@ class nav_cloning_node:
         os.makedirs(self.path + self.start_time)
         self.DURATION = 0.2
         # self.limit = [0.09,0.09,0.09,0.09,0.09,0.09,0.09,0.09,0.09,0.09,0.1]
-        self.limit = [0.15,0.15,0.15,0.15,0.15,0.25]
+        self.limit = [0.05,0.10,0.15,0.20,0.25,0.25]
         self.dataset_count = [0,0,0,0,0,0]
         self.dataset_count_sum = 0
+        self.limit_episode = 8000
 
         # with open('/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/conventional/training.csv', 'w') as f:
         #     writer = csv.writer(f, lineterminator='\n')
@@ -149,12 +150,12 @@ class nav_cloning_node:
 
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 8000:
+        if self.episode == self.limit_episode:
             self.learning = False
             self.dl.save(self.save_path)
             # self.dl.load(self.load_path)
 
-        if self.episode == 10000:
+        if self.episode == self.limit_episode + 2000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -175,19 +176,6 @@ class nav_cloning_node:
                     action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
                 angle_error = abs(action - target_action)
 
-            elif self.mode == "zigzag":
-                action, loss = self.dl.act_and_trains(imgobj, target_action)
-                if abs(target_action) < 0.1:
-                    action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                    action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
-                angle_error = abs(action - target_action)
-                if distance > 0.1:
-                    self.select_dl = False
-                elif distance < 0.05:
-                    self.select_dl = True
-                if self.select_dl and self.episode >= 0:
-                    target_action = 0
-
             elif self.mode == "use_dl_output":
                 action, loss = self.dl.act_and_trains(img , target_action)
                 if abs(target_action) < 0.1:
@@ -204,23 +192,29 @@ class nav_cloning_node:
                     target_action = action
 
             elif self.mode == "change_dataset_balance":
-                if self.episode <= 10 or abs(target_action) > 0.1:
-                    action, loss = self.dl.act_and_trains(img , target_action)
+                if self.episode <= 100:
                     if distance < 0.02:
                         self.dataset_count[0] += 1 
+                        dataset_num = 0
                     elif 0.02 <= distance < 0.04:
                         self.dataset_count[1] += 1 
+                        dataset_num = 1
                     elif 0.04 <= distance < 0.06:
                         self.dataset_count[2] += 1 
+                        dataset_num = 2
                     elif 0.06 <= distance < 0.08:
                         self.dataset_count[3] += 1 
+                        dataset_num = 3
                     elif 0.08 <= distance < 0.10:
                         self.dataset_count[4] += 1 
+                        dataset_num = 4
                     elif 0.10 <= distance:
                         self.dataset_count[5] += 1 
+                        dataset_num = 5
+                    action, loss = self.dl.act_and_trains(img , target_action,dataset_num)
                     if abs(target_action) < 0.1:
-                        action_left,  loss_left  = self.dl.act_and_trains(img_left , target_action - 0.2)
-                        action_right, loss_right = self.dl.act_and_trains(img_right , target_action + 0.2)
+                        action_left,  loss_left  = self.dl.act_and_trains(img_left , target_action - 0.2, dataset_num)
+                        action_right, loss_right = self.dl.act_and_trains(img_right , target_action + 0.2,dataset_num)
 
 
                     self.dataset_count_sum += 1
@@ -232,76 +226,88 @@ class nav_cloning_node:
 
                 else:
                     if distance < 0.02:
-                        # if self.dataset_count[0] / self.episode < self.limit[0]:
-                        if self.dataset_count[0] / self.dataset_count_sum < self.limit[0]:
-                            make_dataset_timing = True
-                            self.dataset_count_sum += 1
+                        dataset_num = 0
+                        if self.dataset_count[0] / self.episode < self.limit[0]:
+                        # if self.dataset_count[0] / self.dataset_count_sum < self.limit[0]:
+                            del_flag = False
+                            self.dataset_count[0] += 1 
                         else:
-                            make_dataset_timing = False
+                            del_flag = True
 
                     elif 0.02 <= distance < 0.04:
-                        # if self.dataset_count[1] / self.episode < self.limit[1]:
-                        if self.dataset_count[1] / self.dataset_count_sum < self.limit[1]:
-                            make_dataset_timing = True
-                            self.dataset_count_sum += 1
+                        dataset_num = 1
+                        if self.dataset_count[1] / self.episode < self.limit[1]:
+                        # if self.dataset_count[1] / self.dataset_count_sum < self.limit[1]:
+                            del_flag = False
+                            self.dataset_count[1] += 1 
                         else:
-                            make_dataset_timing = False
+                            del_flag = True
 
                     elif 0.04 <= distance < 0.06:
-                        # if self.dataset_count[2] / self.episode < self.limit[2]:
-                        if self.dataset_count[2] / self.dataset_count_sum < self.limit[2]:
-                            make_dataset_timing = True
-                            self.dataset_count_sum += 1
+                        dataset_num = 2
+                        if self.dataset_count[2] / self.episode < self.limit[2]:
+                        # if self.dataset_count[2] / self.dataset_count_sum < self.limit[2]:
+                            del_flag = False
+                            self.dataset_count[2] += 1 
                         else:
-                            make_dataset_timing = False
+                            del_flag = True
 
                     elif 0.06 <= distance < 0.08:
-                        # if self.dataset_count[3] / self.episode < self.limit[3]:
-                        if self.dataset_count[3] / self.dataset_count_sum < self.limit[3]:
-                            make_dataset_timing = True
-                            self.dataset_count_sum += 1
+                        dataset_num = 3
+                        if self.dataset_count[3] / self.episode < self.limit[3]:
+                        # if self.dataset_count[3] / self.dataset_count_sum < self.limit[3]:
+                            del_flag = False
+                            self.dataset_count[3] += 1 
                         else:
-                            make_dataset_timing = False
+                            del_flag = True
 
                     elif 0.08 <= distance < 0.10:
-                        # if self.dataset_count[4] / self.episode < self.limit[4]:
-                        if self.dataset_count[4] / self.dataset_count_sum < self.limit[4]:
-                            make_dataset_timing = True
-                            self.dataset_count_sum += 1
+                        dataset_num = 4
+                        if self.dataset_count[4] / self.episode < self.limit[4]:
+                        # if self.dataset_count[4] / self.dataset_count_sum < self.limit[4]:
+                            del_flag = False
+                            self.dataset_count[4] += 1 
                         else:
-                            make_dataset_timing = False
+                            del_flag = True
 
                     elif 0.10 <= distance:
-                        # if self.dataset_count[5] / self.episode < self.limit[5]:
-                        if self.dataset_count[5] / self.dataset_count_sum < self.limit[5]:
-                            make_dataset_timing = True
-                            self.dataset_count_sum += 1
-                        else:
-                            make_dataset_timing = False
-
-                    if make_dataset_timing:
-                        self.dl.make_dataset(img, target_action)
-                        if distance < 0.02:
-                            self.dataset_count[0] += 1 
-                        elif 0.02 <= distance < 0.04:
-                            self.dataset_count[1] += 1 
-                        elif 0.04 <= distance < 0.06:
-                            self.dataset_count[2] += 1 
-                        elif 0.06 <= distance < 0.08:
-                            self.dataset_count[3] += 1 
-                        elif 0.08 <= distance < 0.10:
-                            self.dataset_count[4] += 1 
-                        elif 0.10 <= distance:
+                        dataset_num = 5
+                        if self.dataset_count[5] / self.episode < self.limit[5]:
+                        # if self.dataset_count[5] / self.dataset_count_sum < self.limit[5]:
+                            del_flag = False
                             self.dataset_count[5] += 1 
-                        line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                        else:
+                            del_flag = True
+
+                    self.dl.make_dataset(img, target_action,dataset_num)
+                    self.dataset_count_sum += 1
+                    line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+                    if del_flag:
+                        # if abs(target_action) < 0.1:
+                        #     self.dl.delete_dataset(dataset_num)
+                        #     self.dataset_count_sum -= 1
+                        # else:
+                        #     with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
+                        #         writer = csv.writer(f, lineterminator='\n')
+                        #         writer.writerow(line)
+                        self.dl.delete_dataset(dataset_num)
+                        self.dataset_count_sum -= 1
+                        # else:
+                        #     with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
+                        #         writer = csv.writer(f, lineterminator='\n')
+                        #         writer.writerow(line)
+
+                    else:
                         with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
                             writer = csv.writer(f, lineterminator='\n')
                             writer.writerow(line)
-                        if abs(target_action) < 0.1:
-                            self.dl.make_dataset(img_left , target_action - 0.2)
-                            self.dl.make_dataset(img_right , target_action + 0.2)
                     loss = self.dl.trains()
                     if abs(target_action) < 0.1:
+                        self.dl.make_dataset(img_left , target_action - 0.2,dataset_num )
+                        self.dl.make_dataset(img_right , target_action + 0.2,dataset_num)
+                        if del_flag:
+                            self.dl.delete_dataset(dataset_num)
+                            self.dl.delete_dataset(dataset_num)
                         loss = self.dl.trains()
                         loss = self.dl.trains()
                     action = self.dl.act(img)
@@ -315,51 +321,6 @@ class nav_cloning_node:
                 if self.select_dl and self.episode >= 0:
                     target_action = action
 
-
-            elif self.mode == "follow_line":
-                action, loss = self.dl.act_and_trains(imgobj, target_action)
-                if abs(target_action) < 0.1:
-                    action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
-                    action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
-                angle_error = abs(action - target_action)
-
-            elif self.mode == "selected_training":
-                probability_of_append_dataset = 10 * distance
-                if probability_of_append_dataset > 1:
-                    probability_of_append_dataset = 1
-                print(probability_of_append_dataset)
-                make_dataset_timing = np.random.choice(a = [True,False], size = 1,p = [probability_of_append_dataset,1-probability_of_append_dataset])
-                action = self.dl.act(img)
-                angle_error = abs(action - target_action)
-                loss = 0
-                if angle_error > 0.05:
-                    if make_dataset_timing[0]:
-                        self.dl.make_dataset(img,target_action)
-                        line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
-                        with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
-                            writer = csv.writer(f, lineterminator='\n')
-                            writer.writerow(line)
-                    action, loss = self.dl.act_and_trains(img, target_action)
-                    line = [str(self.episode), "training", str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
-                    with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
-                        writer = csv.writer(f, lineterminator='\n')
-                        writer.writerow(line)
-                    if abs(target_action) < 0.1:
-                        if make_dataset_timing[0]:
-                            self.dl.make_dataset(img_left,target_action - 0.2)
-                            self.dl.make_dataset(img_right,target_action + 0.2)
-                        action_left,  loss_left  = self.dl.act_and_trains(img_left, target_action - 0.2)
-                        action_right, loss_right = self.dl.act_and_trains(img_right, target_action + 0.2)
-                if distance > 0.1:
-                    self.select_dl = False
-                elif distance < 0.05:
-                    self.select_dl = True
-                if self.select_dl and self.episode >= 0:
-                    target_action = action
-                # line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
-                # with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
-                #     writer = csv.writer(f, lineterminator='\n')
-                #     writer.writerow(line)
 
             # end mode
 
