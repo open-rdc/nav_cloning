@@ -25,7 +25,7 @@
 - git:
     uri: https://github.com/open-rdc/nav_cloning.git
     local-name: nav_cloning
-    version: master
+    version: pytorch
 - git:
     uri: https://github.com/ros-planning/navigation.git
     local-name: navigation
