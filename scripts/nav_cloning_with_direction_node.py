@@ -16,7 +16,6 @@ from std_msgs.msg import Int8
 from std_srvs.srv import Trigger
 from nav_msgs.msg import Path
 from std_msgs.msg import Int8MultiArray
-from waypoint_nav.msg import cmd_dir_intersection
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_srvs.srv import Empty
 from std_srvs.srv import SetBool, SetBoolResponse
@@ -45,8 +44,7 @@ class nav_cloning_node:
         self.mode_save_srv = rospy.Service('/model_save', Trigger, self.callback_model_save)
         self.pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.callback_pose)
         self.path_sub = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.callback_path)
- #       self.cmd_dir_sub = rospy.Subscriber("/cmd_dir_intersection", Int8MultiArray, self.callback_cmd,queue_size=1)
-        self.cmd_dir_sub = rospy.Subscriber("/cmd_dir_intersection", cmd_dir_intersection, self.callback_cmd,queue_size=1)
+        self.cmd_dir_sub = rospy.Subscriber("/cmd_dir", Int8MultiArray, self.callback_cmd,queue_size=1)
         self.min_distance = 0.0
         self.action = 0.0
         self.episode = 0
@@ -60,16 +58,13 @@ class nav_cloning_node:
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/result_with_dir_'+str(self.mode)+'/'
         self.save_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_with_dir_'+str(self.mode)+'/pytorch/'
-        self.load_path =roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_with_dir_'+str(self.mode)+''
+        self.load_path =roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_with_dir_'+str(self.mode)+'/test/model_gpu.pt'
         self.previous_reset_time = 0
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.pos_the = 0.0
         self.is_started = False
         self.cmd_dir_data = [0, 0, 0, 0]
-        self.episode_num =60000
-        print(self.episode_num)
-        #self.cmd_dir_data = [0, 0, 0]
         self.start_time_s = rospy.get_time()
         os.makedirs(self.path + self.start_time)
 
@@ -118,7 +113,7 @@ class nav_cloning_node:
             self.min_distance = min(distance_list)
 
     def callback_cmd(self, data):
-        self.cmd_dir_data = data.cmd_dir
+        self.cmd_dir_data = data.data
 
     def callback_vel(self, data):
         self.vel = data
@@ -137,7 +132,7 @@ class nav_cloning_node:
         model_res.message ="model_save"
         model_res.success = True
         return model_res
-    
+
     def loop(self):
         if self.cv_image.size != 640 * 480 * 3:
             return
@@ -165,16 +160,16 @@ class nav_cloning_node:
         ros_time = str(rospy.Time.now())
 
         # if self.episode == 0:
-        #     self.learning = False
-        #     self.dl.save(self.save_path)
+        #     self.learning = True
+        #     #self.dl.save(self.save_path)
         #     self.dl.load(self.load_path)
         #     print("load model",self.load_path)
         
-        if self.episode == self.episode_num:
+        if self.episode == 60000:
             self.learning = False
             self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
-        if self.episode == self.episode_num+20000:
+        if self.episode == 90000:
             os.system('killall roslaunch')
             sys.exit()
 
@@ -279,13 +274,13 @@ class nav_cloning_node:
             self.vel.angular.z = target_action
             self.nav_pub.publish(self.vel)
 
-        # temp = copy.deepcopy(img)
-        # cv2.imshow("Resized Image", temp)
-        # temp = copy.deepcopy(img_left)
-        # cv2.imshow("Resized Left Image", temp)
-        # temp = copy.deepcopy(img_right)
-        # cv2.imshow("Resized Right Image", temp)
-        # cv2.waitKey(1)
+        temp = copy.deepcopy(img)
+        cv2.imshow("Resized Image", temp)
+        temp = copy.deepcopy(img_left)
+        cv2.imshow("Resized Left Image", temp)
+        temp = copy.deepcopy(img_right)
+        cv2.imshow("Resized Right Image", temp)
+        cv2.waitKey(1)
 
 if __name__ == '__main__':
     rg = nav_cloning_node()
