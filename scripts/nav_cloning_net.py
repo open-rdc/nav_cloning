@@ -162,10 +162,12 @@ class deep_learning:
         # self.writer.flush()
         # <reset dataset>
         if self.x_cat.size()[0] > MAX_DATA:
-            self.x_cat = torch.empty(1, 3, 48, 64).to(self.device)
-            self.t_cat = torch.empty(1, 1).to(self.device)
-            self.first_flag = True
-            print("reset dataset")
+            self.x_cat = self.x_cat[1:]
+            self.t_cat = self.t_cat[1:]
+            # self.x_cat = torch.empty(1, 3, 48, 64).to(self.device)
+            # self.t_cat = torch.empty(1, 1).to(self.device)
+            # self.first_flag = True
+            # print("reset dataset")
 
         # return action_value_training.item(), loss.item()
         return action_value_training[0][0].item(), loss.item()
