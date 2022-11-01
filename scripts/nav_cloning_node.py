@@ -23,9 +23,10 @@ import copy
 import sys
 import tf
 from nav_msgs.msg import Odometry
+import tf2_ros
 
 class nav_cloning_node:
-    def __init__(self):
+    def __init__(self, duration):
         rospy.init_node('nav_cloning_node', anonymous=True)
         self.mode = rospy.get_param("/nav_cloning_node/mode", "use_dl_output")
         self.action_num = 1
@@ -60,11 +61,17 @@ class nav_cloning_node:
         self.is_started = False
         self.start_time_s = rospy.get_time()
         os.makedirs(self.path + self.start_time)
+        self.step = 0
+        self.default_duration = duration
+        self.duration = duration
 
         with open(self.path + self.start_time + '/' +  'training.csv', 'w') as f:
             writer = csv.writer(f, lineterminator='\n')
-            writer.writerow(['step', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)', 'the(rad)'])
+            writer.writerow(['episode', 'mode', 'loss', 'angle_error(rad)', 'distance(m)','x(m)','y(m)', 'the(rad)','step'])
         self.tracker_sub = rospy.Subscriber("/tracker", Odometry, self.callback_tracker)
+
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
     def callback(self, data):
         try:
@@ -105,6 +112,26 @@ class nav_cloning_node:
         if distance_list:
             self.min_distance = min(distance_list)
 
+    def calc_distance(self):
+        distance_list = []
+
+        try:
+            trans = self.tfBuffer.lookup_transform('map', 'base_link', rospy.Time())
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            self.min_distance = 0.0
+            return
+
+        pos = trans.transform.translation
+        for pose in self.path_pose.poses:
+            path = pose.pose.position
+            distance = np.sqrt(abs((pos.x - path.x)**2 + (pos.y - path.y)**2))
+            distance_list.append(distance)
+        if distance_list:
+            self.min_distance = min(distance_list)
+
+    def callback_cmd(self, data):
+        self.cmd_dir_data = data.data
+
     def callback_vel(self, data):
         self.vel = data
         self.action = self.vel.angular.z
@@ -141,17 +168,18 @@ class nav_cloning_node:
 
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 4000:
+        if self.episode == 5000:
             self.learning = False
             self.dl.save(self.save_path)
             #self.dl.load(self.load_path)
 
-        if self.episode == 6000:
+        if self.episode == 7000:
             os.system('killall roslaunch')
             sys.exit()
 
         if self.learning:
             target_action = self.action
+            self.calc_distance()
             distance = self.min_distance
 
             if self.mode == "manual":
@@ -182,9 +210,11 @@ class nav_cloning_node:
 
             elif self.mode == "use_dl_output":
                 action, loss = self.dl.act_and_trains(imgobj, target_action)
+                self.step += 1
                 if abs(target_action) < 0.1:
                     action_left,  loss_left  = self.dl.act_and_trains(imgobj_left, target_action - 0.2)
                     action_right, loss_right = self.dl.act_and_trains(imgobj_right, target_action + 0.2)
+                    self.step += 2
                 angle_error = abs(action - target_action)
                 if distance > 0.1:
                     self.select_dl = False
@@ -216,11 +246,33 @@ class nav_cloning_node:
                 if self.select_dl and self.episode >= 0:
                     target_action = action
 
+            elif self.mode == "variable_sampling_time":
+                if distance < 0.1:
+                    self.duration = self.default_duration * (0.1 - distance) * 10 + self.default_duration
+                elif distance >= 0.1:
+                    self.duration = self.default_duration
+
+                action, loss = self.dl.act_and_trains(imgobj , target_action)
+                self.step += 1
+                if abs(target_action) < 0.1:
+                    action_left,  loss_left  = self.dl.act_and_trains(imgobj_left , target_action - 0.2)
+                    action_right, loss_right = self.dl.act_and_trains(imgobj_right , target_action + 0.2)
+                    self.step += 2
+
+                angle_error = abs(action - target_action)
+                if distance > 0.1:
+                    self.select_dl = False
+                elif distance < 0.05:
+                    self.select_dl = True
+                if self.select_dl and self.episode >= 0:
+                    target_action = action
+                print("DURATION: " + str(self.duration))
+
             # end mode
 
-            print(str(self.episode) + ", training, loss: " + str(loss) + ", angle_error: " + str(angle_error) + ", distance: " + str(distance))
+            print(str(self.episode)  + ", step: " + str(self.step) + ", training, loss: " + str(loss) + ", angle_error: " + str(angle_error) + ", distance: " + str(distance))
             self.episode += 1
-            line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+            line = [str(self.episode), "training", str(loss), str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the), str(self.step)]
             with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
@@ -235,13 +287,14 @@ class nav_cloning_node:
 
             self.episode += 1
             angle_error = abs(self.action - target_action)
-            line = [str(self.episode), "test", "0", str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the)]
+            line = [str(self.episode), "test", "0", str(angle_error), str(distance), str(self.pos_x), str(self.pos_y), str(self.pos_the), str(self.step)]
             with open(self.path + self.start_time + '/' + 'training.csv', 'a') as f:
                 writer = csv.writer(f, lineterminator='\n')
                 writer.writerow(line)
             self.vel.linear.x = 0.2
             self.vel.angular.z = target_action
             self.nav_pub.publish(self.vel)
+            self.duration = self.default_duration
 
         temp = copy.deepcopy(img)
         cv2.imshow("Resized Image", temp)
@@ -251,10 +304,13 @@ class nav_cloning_node:
         cv2.imshow("Resized Right Image", temp)
         cv2.waitKey(1)
 
+    def duration(self):
+        return self.duration
+
 if __name__ == '__main__':
-    rg = nav_cloning_node()
-    DURATION = 0.2
-    r = rospy.Rate(1 / DURATION)
+    DURATION = 0.25
+    rg = nav_cloning_node(DURATION)
     while not rospy.is_shutdown():
         rg.loop()
+        r = rospy.Rate(1 / rg.duration)
         r.sleep()
