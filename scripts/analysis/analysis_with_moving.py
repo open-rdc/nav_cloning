@@ -7,6 +7,9 @@ import cv2
 import math
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from nav_cloning_net import *
 from skimage.transform import resize
 from geometry_msgs.msg import Twist
@@ -21,10 +24,8 @@ from gazebo_msgs.msg import ModelStates
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState, GetModelState
 import csv
-import os
 import time
 import copy
-import sys
 import tf
 from nav_msgs.msg import Odometry
 
@@ -59,30 +60,31 @@ class nav_cloning_node:
         self.pos_y = 0.0
         self.pos_the = 0.0
         self.is_started = False
-        self.reset_count = 1
+        self.position_reset_count = 1
         self.start_distance = 0.3
         self.start_distance_for_calc = 0.3
         self.offset_ang = 0
-        self.angle_reset = 1
+        self.angle_reset_count = 0
         self.start_time_s = rospy.get_time()
         os.makedirs(self.path + self.start_time)
         #self.tracker_sub = rospy.Subscriber("/tracker", Odometry, self.callback_tracker)
         self.gazebo_pos_sub = rospy.Subscriber("/gazebo/model_states", ModelStates, self.callback_gazebo_pos, queue_size = 2) 
         self.gazebo_pos_x = 0.0
         self.gazebo_pos_y = 0.0
-        self.traceable_num_1 = 0
-        self.traceable_num_2 = 0
-        self.traceable_num_3 = 0
-        self.traceable_num_4 = 0
-        self.traceable_num_5 = 0
-        self.traceable_num_6 = 0
-        self.traceable_num = 0
+        self.traceable_score_1 = 0
+        self.traceable_score_2 = 0
+        self.traceable_score_3 = 0
+        self.traceable_score_4 = 0
+        self.traceable_score_5 = 0
+        self.traceable_score_6 = 0
+        self.move_count = 1
         self.dl.load(self.load_path)
         self.path_points=[]
         self.is_first = True
-        self.is_first_evaluation = True
         self.is_finish = False
         self.start = False
+        self.score_list = []
+        self.score_list_sum = []
         with open(self.path + 'path.csv', 'r') as f:
             is_first = True
             for row in csv.reader(f):
@@ -133,8 +135,8 @@ class nav_cloning_node:
             distance = np.sqrt(abs((self.gazebo_pos_x - path_x)**2 + (self.gazebo_pos_y - path_y)**2))
             distance_list.append(distance)
 
-        if distance_list:
-            self.min_distance = min(distance_list)
+        # if distance_list:
+        self.min_distance = min(distance_list)
 
     # def callback_vel(self, data):
     #     self.vel = data
@@ -164,34 +166,97 @@ class nav_cloning_node:
             resp = set_state( state )
         except rospy.ServiceException as e:
             print("Service call failed: %s" % e)
-        r.sleep()
-        r.sleep()
+        r.sleep() #need adjust
+        r.sleep() #need adjust
         r.sleep() #need adjust
 
-    def calc_traceable(self, limit_episode):
-        if limit_episode:
-            return self.traceable_num_1,self.traceable_num_2, self.traceable_num_3,self.traceable_num_4,self.traceable_num_5,self.traceable_num_6
+    def first_move(self):
+        flag = True
+        with open(self.path + '/traceable_pos.csv', 'r') as f:
+            for row in csv.reader(f):
+                if flag:
+                    count, str_x, str_y, str_angle, t = row
+                    the = float(str_angle) + math.radians(10)
+                    the = the - 2.0 * math.pi if the >  math.pi else the
+                    the = the + 2.0 * math.pi if the < -math.pi else the
+                    self.robot_move(float(str_x),float(str_y),float(the))
+                    print("robot_move_first")
+                    flag = False
+
+    def calc_move_pos(self):
+        # angle 
+        if self.angle_reset_count == 0:
+           self.offset_ang = -10
+        elif self.angle_reset_count == 1:
+           self.offset_ang = -5
+        elif self.angle_reset_count == 2:
+           self.offset_ang = 0
+        elif self.angle_reset_count == 3:
+           self.offset_ang = -5
+        elif self.angle_reset_count == 4:
+           self.offset_ang = -10
+        # position
+        number = 0
+        with open(self.path + '/traceable_pos.csv', 'r') as f:
+            for row in csv.reader(f):
+                number += 1
+                if number == self.position_reset_count:
+                    count, str_x, str_y, str_angle, t = row
+                    the = float(str_angle) + math.radians(self.offset_ang)
+                    the = the - 2.0 * math.pi if the >  math.pi else the
+                    the = the + 2.0 * math.pi if the < -math.pi else the
+                else:
+                    pass
+
+        return float(str_x), float(str_y), float(the)
+
+    def check_traceable(self):
+        if self.min_distance <= 0.05:
+            traceable = True
         else:
-            if (self.reset_count-1) % 7 == 1:
-                if self.traceable_num == 3:
-                    self.traceable_num_1 += 1
-            elif (self.reset_count-1) % 7 == 2:
-                if self.traceable_num == 3:
-                    self.traceable_num_2 += 1
-            elif (self.reset_count-1) % 7 == 3:
-                if self.traceable_num == 3:
-                    self.traceable_num_3 += 1
-            elif (self.reset_count-1) % 7 == 5:
-                if self.traceable_num == 3:
-                    self.traceable_num_4 += 1
-            elif (self.reset_count-1) % 7 == 6:
-                if self.traceable_num == 3:
-                    self.traceable_num_5 += 1
-            elif (self.reset_count-1) % 7 == 0:
-                if self.traceable_num == 3:
-                    self.traceable_num_6 += 1
-        
-            return self.traceable_num_1,self.traceable_num_2, self.traceable_num_3,self.traceable_num_4,self.traceable_num_5,self.traceable_num_6
+            traceable = False
+
+        return traceable
+
+    def eval(self, traceable, angle_num):
+        if traceable:
+            angle_score = 1
+        else:
+            angle_score = 0
+        self.score_list.append(angle_score)
+        print("angle_score: " + str(angle_score))
+        if angle_num == -1: # when the x,y position change
+            self.score_list_sum.append(self.score_list)
+            print("position_score: " + str(self.score_list))
+            position_score = sum(self.score_list)/5
+            print("position_score: " + str(position_score))
+
+            #---------- csv write -----------------
+            line = [str(self.score_list), str(position_score)]
+            with open(self.path + self.start_time + '/' + 'score.csv', 'a') as fl:
+                writer = csv.writer(fl, lineterminator='\n')
+                writer.writerow(line)
+            # score_list and position_score
+
+            self.score_list = []
+            position_score = 0
+
+    def final_eval(self, traceable):
+        position = self.position_reset_count % 7
+        if traceable:
+            if position == 1:
+                self.traceable_score_1 += 1
+            elif position == 2:
+                self.traceable_score_2 += 1
+            elif position == 3:
+                self.traceable_score_3 += 1
+            elif position == 5:
+                self.traceable_score_4 += 1
+            elif position == 6:
+                self.traceable_score_5 += 1
+            elif position == 0:
+                self.traceable_score_6 += 1
+            
 
     def loop(self):
         if self.cv_image.size != 640 * 480 * 3:
@@ -215,183 +280,91 @@ class nav_cloning_node:
         imgobj_right = np.asanyarray([r,g,b])
 
         ros_time = str(rospy.Time.now())
-        number = 0
-        self.check_distance()
+        self.check_distance() 
+        traceable = self.check_traceable() #True or False
 
         #set limit_episode
         if self.episode == 150:
             limit_episode = True
         else:
             limit_episode = False
-
-        if self.reset_count == 904:
+        
+        if self.position_reset_count >= 904:
             self.is_finish = True
 
-        if self.angle_reset == 0:
-            if self.start_distance_for_calc > self.min_distance:
-                traceable = True
-            else:
-                traceable = False
-                
-        else:
-            if self.start_distance > self.min_distance:
-                traceable = True
-            else:
-                traceable = False
-
-        print("episode: ", str(self.episode))
         if self.is_first:
-            with open(self.path + '/traceable_pos.csv', 'r') as f:
-                for row in csv.reader(f):
-                    number += 1
-                    count, str_x, str_y, str_angle, t = row
-                    if number == self.reset_count:
-                        the = float(str_angle) + math.radians(10)
-                        the = the - 2.0 * math.pi if the >  math.pi else the
-                        the = the + 2.0 * math.pi if the < -math.pi else the
-                        self.robot_move(float(str_x),float(str_y),float(the))
-                        print("robot_move_fiest" * 5)
-                        print("start_distance: " + str(self.start_distance))
+            self.first_move()
             self.is_first = False
-
-
-        if self.is_first == False and self.is_finish == False:
-            # position is center
-            if self.reset_count % 7 == 4:
-                if traceable or limit_episode:
-                    if limit_episode == False:
-                        self.traceable_num += 1
-                        self.traceable_num_1,self.traceable_num_2, self.traceable_num_3,self.traceable_num_4,self.traceable_num_5,self.traceable_num_6 = self.calc_traceable(limit_episode)
-                        self.traceable_num = 0
-                        self.reset_count += 1
-                        return
-                    else:
-                        self.reset_count += 1
-                        return
-                else:
-                    target_action = self.dl.act(imgobj)
-                    self.is_first = False
-                    if self.reset_count != 904:
-                        self.episode += 1
-                    self.vel.linear.x = 0.2
-                    self.vel.angular.z = target_action
-                    self.nav_pub.publish(self.vel)
-
-                    temp = copy.deepcopy(img)
-                    cv2.imshow("Resized Image", temp)
-                    temp = copy.deepcopy(img_left)
-                    cv2.imshow("Resized Left Image", temp)
-                    temp = copy.deepcopy(img_right)
-                    cv2.imshow("Resized Right Image", temp)
-                    cv2.waitKey(1)
-                    return
-
-            if traceable or limit_episode:
-                if limit_episode == False:
-                    self.traceable_num += 1
-                # angle 
-                if self.angle_reset == 0:
-                   self.offset_ang = 5
-                elif self.angle_reset == 1:
-                   self.offset_ang = 0
-                elif self.angle_reset == 2:
-                   self.offset_ang = -5
-
-                # robot_reset
-                with open(self.path + '/traceable_pos.csv', 'r') as f:
-                    for row in csv.reader(f):
-                        number += 1
-                        if number == self.reset_count:
-                            count, str_x, str_y, str_angle, t = row
-                            the = float(str_angle) + math.radians(self.offset_ang)
-                            the = the - 2.0 * math.pi if the >  math.pi else the
-                            the = the + 2.0 * math.pi if the < -math.pi else the
-                            print("angle_reset: " + str(self.angle_reset))
-                            print("start_distance: " + str(self.start_distance))
-                            print("calc_distance: " + str(self.start_distance_for_calc))
-                            print("min_distance: " + str(self.min_distance))
-                            self.robot_move(float(str_x),float(str_y),float(the))
-                            print("robot_move")
-
-
-        #################################################################################
-        # calc
-                
-                if self.angle_reset == 0:
-                    self.traceable_num_1,self.traceable_num_2, self.traceable_num_3,self.traceable_num_4,self.traceable_num_5,self.traceable_num_6 = self.calc_traceable(limit_episode)
-                    self.traceable_num = 0
-
-                if self.angle_reset == 2:
-                    if self.reset_count % 7 == 1:
-                        self.start_distance_for_calc = 0.3
-                    elif self.reset_count % 7 == 2:
-                        self.start_distance_for_calc = 0.2
-                    elif self.reset_count % 7 == 3:
-                        self.start_distance_for_calc = 0.1
-                    elif self.reset_count % 7 == 5:
-                        self.start_distance_for_calc = 0.1
-                    elif self.reset_count % 7 == 6:
-                        self.start_distance_for_calc = 0.2
-                    elif self.reset_count % 7 == 0:
-                        self.start_distance_for_calc = 0.3
-
-
-                    if self.reset_count % 7 == 1:
-                        self.start_distance = 0.2
-                    elif self.reset_count % 7 == 2:
-                        self.start_distance = 0.1
-                    elif self.reset_count % 7 == 3:
-                        self.start_distance = 0.1
-                    elif self.reset_count % 7 == 5:
-                        self.start_distance = 0.2
-                    elif self.reset_count % 7 == 6:
-                        self.start_distance = 0.3
-                    elif self.reset_count % 7 == 0:
-                        self.start_distance = 0.3
-
-                    self.reset_count += 1
-                    self.angle_reset = 0
-
-                else:
-                    self.angle_reset += 1
-
-                self.episode = 0
-                print(self.traceable_num_1)
-                print(self.traceable_num_2)
-                print(self.traceable_num_3)
-                print(self.traceable_num_4)
-                print(self.traceable_num_5)
-                print(self.traceable_num_6)
-                print("reset_count: " + str(self.reset_count))
+            return
 
         if self.is_finish:
-            print("fin")
-            if traceable or limit_episode == False:
-                if limit_episode == False and self.traceable_num == 2:
-                    self.traceable_num_6 += 1
-                print(self.traceable_num_1/129)
-                print(self.traceable_num_2/129)
-                print(self.traceable_num_3/129)
-                print(self.traceable_num_4/129)
-                print(self.traceable_num_5/129)
-                print(self.traceable_num_6/129)
-                line = [str(self.traceable_num_1/129), str(self.traceable_num_2/129), str(self.traceable_num_3/129), str(self.traceable_num_4/129),str(self.traceable_num_5/129),str(self.traceable_num_6/129)]
+            if traceable or limit_episode:
+                print("fin")
+                print(self.traceable_score_1)
+                print(self.traceable_score_2)
+                print(self.traceable_score_3)
+                print(self.traceable_score_4)
+                print(self.traceable_score_5)
+                print(self.traceable_score_6)
+
+                line = [str(self.traceable_score_1/129), str(self.traceable_score_2/129), str(self.traceable_score_3/129), str(self.traceable_score_4/129),str(self.traceable_score_5/129),str(self.traceable_score_6/129)]
                 with open(self.path + self.start_time + '/' + 'traceable.csv', 'a') as f:
                     writer = csv.writer(f, lineterminator='\n')
                     writer.writerow(line)
                 os.system('killall roslaunch')
                 sys.exit()
 
+        else:
+            if traceable or limit_episode:
+                self.eval(traceable,self.angle_reset_count)
+                self.before_angle_count = self.angle_reset_count
+                self.angle_reset_count += 1
+                print("angle_reset_count:" + str(self.angle_reset_count))
+                print("position_reset_count:" + str(self.position_reset_count))
+
+                if self.position_reset_count %7 == 4: # center position is pass
+                    self.position_reset_count += 1
+                    self.angle_reset_count = -1
+                    print("center_position")
+
+                self.episode = 0
+                x,y,the = self.calc_move_pos()
+                self.robot_move(x,y,the)
+                self.move_count += 1
+
+
+                # ------------------ num of reset -------------------
+                if self.angle_reset_count == 4:
+                    self.final_eval(traceable)
+                    self.angle_reset_count = -1
+                    self.position_reset_count += 1
+                #------------------------------------------------------
+
+
+
+
+        #
         target_action = self.dl.act(imgobj)
-        self.is_first = False
+        print("episode:" +str(self.episode))
+        print("move_count:" +str(self.move_count))
         self.episode += 1
-        # line_trajectory = [str(self.episode), str(self.pos_x), str(self.pos_y), str(self.pos_the), str(self.angle_reset), str(self.reset_count)]
-        # with open(self.path + self.start_time + '/' + 'trajectory.csv', 'a') as f:
-        #     writer = csv.writer(f, lineterminator='\n')
-        #     writer.writerow(line_trajectory)
+
+        line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count)]
+        with open(self.path + self.start_time + '/' + 'trajectory.csv', 'a') as f:
+            writer = csv.writer(f, lineterminator='\n')
+            writer.writerow(line_trajectory)
         self.vel.linear.x = 0.2
         self.vel.angular.z = target_action
         self.nav_pub.publish(self.vel)
+        print("---traceable---")
+        print(self.traceable_score_1)
+        print(self.traceable_score_2)
+        print(self.traceable_score_3)
+        print(self.traceable_score_4)
+        print(self.traceable_score_5)
+        print(self.traceable_score_6)
+        print("---traceable---")
+        print("------------------"*5)
 
         temp = copy.deepcopy(img)
         cv2.imshow("Resized Image", temp)
