@@ -163,7 +163,7 @@ class deep_learning:
 
     def load(self, load_path):
         #<model load>
-        self.net.state_dict(torch.load(load_path))
+        self.net.load_state_dict(torch.load(load_path))
 
 if __name__ == '__main__':
         dl = deep_learning()
