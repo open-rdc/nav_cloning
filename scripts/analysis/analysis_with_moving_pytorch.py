@@ -39,23 +39,17 @@ class nav_cloning_node:
         self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
         self.image_left_sub = rospy.Subscriber("/camera_left/rgb/image_raw", Image, self.callback_left_camera)
         self.image_right_sub = rospy.Subscriber("/camera_right/rgb/image_raw", Image, self.callback_right_camera)
-        # self.action_pub = rospy.Publisher("action", Int8, queue_size=1)
         self.nav_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.srv = rospy.Service('/training', SetBool, self.callback_dl_training)
         self.min_distance = 0.0
-        # self.action = 0.0
         self.episode = 0
         self.vel = Twist()
-        # self.path_pose = PoseArray()
         self.cv_image = np.zeros((480,640,3), np.uint8)
         self.cv_left_image = np.zeros((480,640,3), np.uint8)
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/change_dataset_balance/'
-        self.load_path = '/home/kiyooka/Downloads/20221104_01_58_40/model_gpu.pt' #change_dataset_balance
-        # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/model_use_dl_output/20221028_03:35:07/model_gpu.pt' #change_dataset_balance
-        # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/model_change_dataset_balance/20221031_15:16:54/model_gpu.pt' #change_dataset_balance
-        # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/analysis/follow_path/model.net'
+        self.load_path = '/home/kiyooka/Downloads/20221104_01_58_40/model_gpu.pt' #specify model
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.pos_the = 0.0
@@ -180,7 +174,6 @@ class nav_cloning_node:
         with open(self.path + '/traceable_pos.csv', 'r') as f:
             for row in csv.reader(f):
                 if flag:
-                    # count, str_x, str_y, str_angle, t = row
                     str_x, str_y, str_angle, t = row
                     the = float(str_angle) + math.radians(10)
                     the = the - 2.0 * math.pi if the >  math.pi else the
@@ -222,26 +215,6 @@ class nav_cloning_node:
             traceable = True
         else:
             traceable = False
-    #     if self.position_change_flag:
-    #         position = (self.position_reset_count - 1) % 7
-    #     else:
-    #         position = self.position_reset_count % 7
-    #     if position == 1 or 0:
-    #         if self.min_distance <= 0.25:
-    #             traceable = True
-    #         else:
-    #             traceable = False
-    #     elif position == 2 or 6:
-    #         if self.min_distance <= 0.15:
-    #             traceable = True
-    #         else:
-    #             traceable = False
-    #     elif position == 3 or 5:
-    #         if self.min_distance <= 0.05:
-    #             traceable = True
-    #         else:
-    #             traceable = False
-    #
         return traceable
 
     def eval(self, traceable, angle_num):
@@ -252,7 +225,6 @@ class nav_cloning_node:
             angle_score = 0
         self.score_list.append(angle_score)
         print("angle_score: " + str(angle_score))
-        # if angle_num == -1: # when the x,y position change
         if self.position_change_flag: # when the x,y position change
             self.score_list_sum.append(self.score_list)
             print("position_score: " + str(self.score_list))
@@ -308,19 +280,12 @@ class nav_cloning_node:
         ros_time = str(rospy.Time.now())
         collision_flag = False
         self.check_distance() 
-        # if self.is_first == False:
         traceable = self.check_traceable() #True or False
         if self.episode > 5:
             collision_flag = self.collision()
 
-        #set limit_episode
-        # if self.episode == 305:
-        #     limit_episode = True
-        # else:
-        #     limit_episode = False
         
-        # if self.position_reset_count >= 904:
-        if self.position_reset_count >= 1163:
+        if self.position_reset_count >= 1156:
             self.is_finish = True
 
         if self.is_first:
@@ -329,8 +294,8 @@ class nav_cloning_node:
             return
 
         if self.is_finish:
-            # if traceable or limit_episode or collision_flag:
             if traceable or collision_flag:
+                self.eval(traceable,self.angle_reset_count)
                 print("fin")
                 print(self.traceable_score_1)
                 print(self.traceable_score_2)
@@ -339,7 +304,7 @@ class nav_cloning_node:
                 print(self.traceable_score_5)
                 print(self.traceable_score_6)
 
-                line = [str(self.traceable_score_1/166), str(self.traceable_score_2/166), str(self.traceable_score_3/166), str(self.traceable_score_4/166),str(self.traceable_score_5/166),str(self.traceable_score_6/166)]
+                line = [str(self.traceable_score_1/165), str(self.traceable_score_2/165), str(self.traceable_score_3/165), str(self.traceable_score_4/165),str(self.traceable_score_5/165),str(self.traceable_score_6/165)]
                 with open(self.path + self.start_time + '/' + 'traceable.csv', 'a') as f:
                     writer = csv.writer(f, lineterminator='\n')
                     writer.writerow(line)
@@ -347,7 +312,6 @@ class nav_cloning_node:
                 sys.exit()
 
         else:
-            # if traceable or limit_episode or collision_flag:
             if traceable or collision_flag:
                 self.collision_list = [[],[]]
                 self.eval(traceable,self.angle_reset_count)
@@ -369,7 +333,6 @@ class nav_cloning_node:
 
                 # ------------------ num of reset -------------------
                 if self.angle_reset_count == 4:
-                    # self.final_eval(traceable)
                     self.angle_reset_count = -1
                     self.position_reset_count += 1
                     self.position_change_flag = True
@@ -384,7 +347,7 @@ class nav_cloning_node:
         print("move_count:" +str(self.move_count))
         self.episode += 1
 
-        line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count)]
+        line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count), str(collision_flag)]
         with open(self.path + self.start_time + '/' + 'trajectory.csv', 'a') as f:
             writer = csv.writer(f, lineterminator='\n')
             writer.writerow(line_trajectory)
