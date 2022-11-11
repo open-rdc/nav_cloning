@@ -32,7 +32,7 @@ from nav_msgs.msg import Odometry
 class nav_cloning_node:
     def __init__(self):
         rospy.init_node('nav_cloning_node', anonymous=True)
-        self.mode = rospy.get_param("/nav_cloning_node/mode", "use_dl_output")
+        self.mode = rospy.get_param("/nav_cloning_node/mode", "change_dataset_balance")
         self.action_num = 1
         self.dl = deep_learning(n_action = self.action_num)
         self.bridge = CvBridge()
@@ -48,7 +48,7 @@ class nav_cloning_node:
         self.cv_left_image = np.zeros((480,640,3), np.uint8)
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
-        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/change_dataset_balance/'
+        self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
         self.load_path = '/home/kiyooka/Downloads/20221104_01_58_40/model_gpu.pt' #specify model
         self.pos_x = 0.0
         self.pos_y = 0.0
@@ -58,7 +58,7 @@ class nav_cloning_node:
         self.offset_ang = 0
         self.angle_reset_count = 0
         self.start_time_s = rospy.get_time()
-        os.makedirs(self.path + self.start_time)
+        os.makedirs(self.path + self.mode + "/"  self.start_time)
         self.gazebo_pos_sub = rospy.Subscriber("/gazebo/model_states", ModelStates, self.callback_gazebo_pos, queue_size = 2) 
         self.gazebo_pos_x = 0.0
         self.gazebo_pos_y = 0.0
@@ -254,7 +254,7 @@ class nav_cloning_node:
             print("---traceable---")
             #---------- csv write -----------------
             line = [str(self.score_list), str(position_score)]
-            with open(self.path + self.start_time + '/' + 'score.csv', 'a') as fl:
+            with open(self.path + self.mode + "/" + self.start_time + '/' + 'score.csv', 'a') as fl:
                 writer = csv.writer(fl, lineterminator='\n')
                 writer.writerow(line)
             # score_list and position_score
@@ -305,7 +305,7 @@ class nav_cloning_node:
                 print(self.traceable_score_6)
 
                 line = [str(self.traceable_score_1/165), str(self.traceable_score_2/165), str(self.traceable_score_3/165), str(self.traceable_score_4/165),str(self.traceable_score_5/165),str(self.traceable_score_6/165)]
-                with open(self.path + self.start_time + '/' + 'traceable.csv', 'a') as f:
+                with open(self.path + self.mode + "/" + self.start_time + '/' + 'traceable.csv', 'a') as f:
                     writer = csv.writer(f, lineterminator='\n')
                     writer.writerow(line)
                 os.system('killall roslaunch')
