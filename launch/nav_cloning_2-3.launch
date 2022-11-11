@@ -2,11 +2,11 @@
 <launch>
   <arg name="script" default="nav_cloning_node_pytorch.py"/>
   <arg name="mode" default="change_dataset_balance"/>
-  <arg name="initial_pose_x" default="-9.573765741707557" />
-  <arg name="initial_pose_y" default="30.077835030847126" />
+  <arg name="initial_pose_x" default="-10.1856145815951" />
+  <arg name="initial_pose_y" default="28.441895426996574" />
   <arg name="initial_pose_a" default="-1.57" />
-  <arg name="robot_x" default="-10.329653418159506" />
-  <arg name="robot_y" default="30.02514112485139" />
+  <arg name="robot_x" default="-10.1856145815951" />
+  <arg name="robot_y" default="28.441895426996574" />
   <arg name="robot_Y" default="-1.57" />
   <arg name="use_waypoint_nav" default="true" />
   <rosparam param="/nav_cloning_node/mode" subst_value="True">$(arg mode)</rosparam>
@@ -15,7 +15,7 @@
     <arg name="world_name" value="$(find nav_cloning)/world/Tsudanuma_2-3.world"/> 
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
-    <arg name="gui" value="false"/>
+    <arg name="gui" value="true"/>
     <arg name="headless" value="false"/>
     <arg name="debug" value="false"/>
   </include>
