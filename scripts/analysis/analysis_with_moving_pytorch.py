@@ -49,7 +49,7 @@ class nav_cloning_node:
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
-        self.load_path = '/home/kiyooka/Downloads/20221104_03_23_41/model_gpu.pt' #specify model
+        self.load_path = '/home/kiyooka/Downloads/20221104_01_58_40/model_gpu.pt' #specify model
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.pos_the = 0.0
@@ -284,7 +284,6 @@ class nav_cloning_node:
         if self.episode > 5:
             collision_flag = self.collision()
 
-        
         if self.position_reset_count >= 1156:
             self.is_finish = True
 
@@ -354,10 +353,10 @@ class nav_cloning_node:
         else:
             self.vel.linear.x = 0.2
             self.vel.angular.z = target_action
-            line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count), str(collision_flag)]
-            with open(self.path + self.mode + "/" +  self.start_time + '/' + 'trajectory.csv', 'a') as f:
-                writer = csv.writer(f, lineterminator='\n')
-                writer.writerow(line_trajectory)
+        line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count), str(collision_flag)]
+        with open(self.path + self.mode + "/" +  self.start_time + '/' + 'trajectory.csv', 'a') as f:
+            writer = csv.writer(f, lineterminator='\n')
+            writer.writerow(line_trajectory)
 
         self.nav_pub.publish(self.vel)
         print("------------------"*5)
