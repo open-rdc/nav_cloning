@@ -49,7 +49,7 @@ class nav_cloning_node:
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
-        self.load_path = '/home/kiyooka/Downloads/20221104_04_06_11/model_gpu.pt' #specify model
+        self.load_path = '/home/kiyooka/Downloads/20221104_01_58_40/model_gpu.pt' #specify model
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.pos_the = 0.0
@@ -185,15 +185,15 @@ class nav_cloning_node:
     def calc_move_pos(self):
         # angle 
         if self.angle_reset_count == 0:
-           self.offset_ang = -30.0
+           self.offset_ang = -20.0
         elif self.angle_reset_count == 1:
-           self.offset_ang = -15.0
+           self.offset_ang = -10.0
         elif self.angle_reset_count == 2:
            self.offset_ang = 0
         elif self.angle_reset_count == 3:
-           self.offset_ang = 15.0
+           self.offset_ang = 10.0
         elif self.angle_reset_count == 4:
-           self.offset_ang = 30.0
+           self.offset_ang = 20.0
         # position
         number = 0
         with open(self.path + self.mode + "/" +  '/traceable_pos.csv', 'r') as f:
