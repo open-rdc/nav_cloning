@@ -12,7 +12,7 @@ roscd nav_cloning/experiments/
 `data/analysis/change_dataset_balance`に解析用のcsvファイルが生成される．
 
 ### Data Analysis
-詳しくは以下に記載
+以下からpath.csvとtraceable_pos.csvを生成する  
 https://github.com/open-rdc/nav_cloning/wiki
 
 生成された経路追従行動の解析をロボットを動かしながらやる場合(pytorch)
