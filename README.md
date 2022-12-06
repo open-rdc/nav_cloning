@@ -25,11 +25,11 @@ rosrun nav_cloning calc_traceable_pos2.py
 
 生成された経路追従行動の解析(pytorch)
 ```
-roslaunch nav_cloning nav_cloning_2-3.launch scripts:=analysis_with_moving_pytorch.py
+roslaunch nav_cloning nav_cloning_2-3.launch script:=analysis_with_moving_pytorch.py
 ```
 生成された経路追従行動の解析(chainer)
 ```
-roslaunch nav_cloning nav_cloning_2-3.launch scripts:=analysis_with_moving.py
+roslaunch nav_cloning nav_cloning_2-3.launch script:=analysis_with_moving.py
 ```
 
 
