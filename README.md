@@ -17,14 +17,17 @@ roscd nav_cloning/experiments/
 roscd nav_cloning/data/analysis/use_dl_output/
 ```  
 にpath.csvとtraceable_pos.csvがある．（ロボットを配置する場所の計算に用いる）  
-新しい環境で試したい場合は以下からpath.csvとtraceable_pos.csvを生成する．  
-https://github.com/open-rdc/nav_cloning/wiki
+もし，新しい環境で試したい場合は以下を実行し，path.csvとtraceable_pos.csvを作成する．
+```
+roslaunch nav_cloning nav_cloning_sim.launch script:=path_collector.py
+rosrun nav_cloning calc_traceable_pos2.py
+```  
 
-生成された経路追従行動の解析をロボットを動かしながらやる場合(pytorch)
+生成された経路追従行動の解析(pytorch)
 ```
 roslaunch nav_cloning nav_cloning_2-3.launch scripts:=analysis_with_moving_pytorch.py
 ```
-生成された経路追従行動の解析をロボットを動かしながらやる場合(chainer)
+生成された経路追従行動の解析(chainer)
 ```
 roslaunch nav_cloning nav_cloning_2-3.launch scripts:=analysis_with_moving.py
 ```
