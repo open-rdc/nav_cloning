@@ -5,84 +5,28 @@
 * nav_cloning (一定経路の模倣学習)
 ```
 roscd nav_cloning/experiments/
-./experiment_use_dl_output.sh
+./experiment_dataset_balance.sh
 ```
-`nav_cloning/data`フォルダにログと学習済みモデルを保存  
-シェルファイルのパラメータを変更することで様々な条件で実験可能
-
-* nav_cloning_with_direction (経路選択を含む模倣学習)
-```
-roscd nav_cloning/experiments/
-./experiment_with_direction_use_dl_output.sh
-```
-`nav_cloning/data`フォルダにログと学習済みモデルが保存  
-シェルファイルのパラメータを変更することで様々な条件で実験可能
-
-[![IMAGE](http://img.youtube.com/vi/6LG06ZbCjto/0.jpg)](https://youtu.be/6LG06ZbCjto)
-
-### 分割して起動
-* シミュレータの起動
-```
-roslaunch nav_cloning nav_cloning_sim.launch
-```
-* rviz上の2D Pose Estimateで自己位置を合わせる
-* 実行
-```
-rosservice call /start_wp_nav
-```
-* save data:  /nav_cloning/data/result \
-loss \
-angle_error : navigationの出力と訓練されたモデルの出力の差 \
-distance : 目標経路とロボットの位置の間の距離
-
-## install
-* 環境 ubuntu18.04, ros melodic
-
-* ワークスペースの用意
-```
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/src
-catkin_init_workspace
-cd ../
-catkin_make
-```
-* nav_cloningの用意
-```
-cd ~/catkin_ws/src
-wget https://raw.githubusercontent.com/open-rdc/nav_cloning/master/nav_cloning.install
-wstool init
-wstool merge nav_cloning.install
-wstool up
-```
-* 依存パッケージのインストール
-```
-cd ~/catkin_ws/src
-rosdep init
-rosdep install --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
-cd ../
-catkin_make
-```
-* その他インストール
-```
-sudo apt install python-pip
-pip install chainer==6.0
-pip install scikit-image
-```
-## Docker
-* Usage
-example:
-1. 起動
-```
-cd ~/catkin_ws/src/nav_cloning/docker
-docker-compose up
-```
-or
-```
-docker pull -p 8080:80 masayaokada/nav_cloning:open-rdc
-```
-2. アクセス
-Access to http://localhost:8080
+経路からの距離によってデータセットに加える数を変える手法  
+シェルファイルのパラメータを変更することで様々な条件で実験可能  
+`data/analysis/change_dataset_balance`に解析用のcsvファイルが生成される．
 
 ### Data Analysis
+２号館３階のシミュレーターで試す場合は  
+```
+roscd nav_cloning/data/analysis/use_dl_output/
+```  
+にpath.csvとtraceable_pos.csvがある．（ロボットを配置する場所の計算に用いる）  
+新しい環境で試したい場合は以下からpath.csvとtraceable_pos.csvを生成する．  
 https://github.com/open-rdc/nav_cloning/wiki
+
+生成された経路追従行動の解析をロボットを動かしながらやる場合(pytorch)
+```
+roslaunch nav_cloning nav_cloning_2-3.launch scripts:=analysis_with_moving_pytorch.py
+```
+生成された経路追従行動の解析をロボットを動かしながらやる場合(chainer)
+```
+roslaunch nav_cloning nav_cloning_2-3.launch scripts:=analysis_with_moving.py
+```
+
 
