@@ -49,7 +49,7 @@ class nav_cloning_node:
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
-        self.load_path = '/home/kiyooka/Downloads/20221104_01_58_40/model_gpu.pt' #specify model
+        self.load_path = '/home/kiyooka/Downloads/2-3_1/model_gpu.pt' #specify model
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.pos_the = 0.0
@@ -174,7 +174,7 @@ class nav_cloning_node:
         with open(self.path + self.mode + "/" + 'traceable_pos.csv', 'r') as f:
             for row in csv.reader(f):
                 if flag:
-                    str_x, str_y, str_angle, t = row
+                    str_x, str_y, str_angle = row
                     the = float(str_angle) + math.radians(10)
                     the = the - 2.0 * math.pi if the >  math.pi else the
                     the = the + 2.0 * math.pi if the < -math.pi else the
@@ -185,15 +185,15 @@ class nav_cloning_node:
     def calc_move_pos(self):
         # angle 
         if self.angle_reset_count == 0:
-           self.offset_ang = -20.0
-        elif self.angle_reset_count == 1:
            self.offset_ang = -10.0
+        elif self.angle_reset_count == 1:
+           self.offset_ang = -5.0
         elif self.angle_reset_count == 2:
            self.offset_ang = 0
         elif self.angle_reset_count == 3:
-           self.offset_ang = 10.0
+           self.offset_ang = 5.0
         elif self.angle_reset_count == 4:
-           self.offset_ang = 20.0
+           self.offset_ang = 10.0
         # position
         number = 0
         with open(self.path + self.mode + "/" +  '/traceable_pos.csv', 'r') as f:
@@ -201,7 +201,7 @@ class nav_cloning_node:
                 number += 1
                 if number == self.position_reset_count:
                     # count, str_x, str_y, str_angle, t = row
-                    str_x, str_y, str_angle, t = row
+                    str_x, str_y, str_angle = row
                     the = float(str_angle) + math.radians(self.offset_ang)
                     the = the - 2.0 * math.pi if the >  math.pi else the
                     the = the + 2.0 * math.pi if the < -math.pi else the
