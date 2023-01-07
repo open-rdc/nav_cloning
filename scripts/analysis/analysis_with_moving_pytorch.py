@@ -49,9 +49,9 @@ class nav_cloning_node:
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
-        # self.load_path = '/home/kiyooka/Downloads/change_dataset_balance/2-3_4/model_gpu.pt' #specify model
-        # self.load_path = '/home/kiyooka/Downloads/use_dl_output/2-3_1/model_gpu.pt' #specify model
-        self.load_path = '/home/kiyooka/Downloads/follow_path/1/model_gpu.pt' #specify model
+        # self.load_path = '/home/kiyooka/Downloads/change_dataset_balance/2-3_3/model_gpu.pt' #specify model
+        self.load_path = '/home/kiyooka/Downloads/use_dl_output/2-3_1/model_gpu.pt' #specify model
+        # self.load_path = '/home/kiyooka/Downloads/follow_path/1/model_gpu.pt' #specify model
         # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/model_change_dataset_balance/willow/model_gpu.pt' #specify model
         # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/model_use_dl_output/willow_1/model_gpu.pt' #specify model
         # self.load_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_change_dataset_balance/0106/model_gpu.pt'
@@ -90,9 +90,10 @@ class nav_cloning_node:
         self.score_list_sum = []
         self.collision_list = [[],[]]
         self.position_change_flag = False
-        # self.last_row = 1155 # last row of traceable_pos.csv
-        self.last_row = 325 # last row of traceable_pos.csv
-        # self.last_row = 835 # last row of traceable_pos.csv
+        self.traceable_timer_num = 0
+        # self.last_row = 55 # last row of traceable_pos.csv
+        # self.last_row = 325 # last row of traceable_pos.csv
+        self.last_row = 835 # last row of traceable_pos.csv
         # self.last_row = 1169 # last row of traceable_pos.csv
         # self.last_row = 35 # last row of traceable_pos.csv
         # with open(self.path + self.mode + "/corner/" + 'path.csv', 'r') as f:
@@ -202,6 +203,7 @@ class nav_cloning_node:
         flag = True
         # with open(self.path + self.mode + '/traceable_pos_corner_test.csv', 'r') as f:
         with open(self.path + self.mode + '/traceable_pos.csv', 'r') as f:
+        # with open(self.path + self.mode + '/last.csv', 'r') as f:
             for row in csv.reader(f):
                 if flag:
                     str_x, str_y, str_angle = row
@@ -215,23 +217,24 @@ class nav_cloning_node:
     def calc_move_pos(self):
         # angle 
         if self.angle_reset_count == 0:
-           # self.offset_ang = -15.0
+           # self.offset_ang = -10.0
            self.offset_ang = -20.0
         elif self.angle_reset_count == 1:
            self.offset_ang = -10.0
-           # self.offset_ang = -7.5
+           # self.offset_ang = -5.0
         elif self.angle_reset_count == 2:
            self.offset_ang = 0
         elif self.angle_reset_count == 3:
-           # self.offset_ang = 7.5
+           # self.offset_ang = 5.0
            self.offset_ang = 10.0
         elif self.angle_reset_count == 4:
-           # self.offset_ang = 15.0
+           # self.offset_ang = 10.0
            self.offset_ang = 20.0
         # position
         number = 0
         # with open(self.path + self.mode + '/traceable_pos_corner_test.csv', 'r') as f:
         with open(self.path + self.mode + '/traceable_pos.csv', 'r') as f:
+        # with open(self.path + self.mode + '/last.csv', 'r') as f:
             for row in csv.reader(f):
                 number += 1
                 if number == self.position_reset_count:
@@ -246,10 +249,14 @@ class nav_cloning_node:
         return float(str_x), float(str_y), float(the)
 
     def check_traceable(self):
+        traceable = False
         if self.min_distance <= 0.05:
-            traceable = True
+            self.traceable_timer_num += 1
+            if self.traceable_timer_num == 10:
+                traceable = True
+                self.traceable_timer_num = 0
         else:
-            traceable = False
+            self.traceable_timer_num = 0
         return traceable
 
     def eval(self, traceable, angle_num):
@@ -366,7 +373,7 @@ class nav_cloning_node:
                 # print(self.traceable_score_12)
 
                 # line = [str(self.traceable_score_1/(self.last_row/5)), str(self.traceable_score_2/(self.last_row/5)), str(self.traceable_score_3/(self.last_row/5)), str(self.traceable_score_4/(self.last_row/5)),str(self.traceable_score_5/(self.last_row/5)),str(self.traceable_score_6/(self.last_row/5)),str(self.traceable_score_7/(self.last_row/5)),str(self.traceable_score_8/(self.last_row/5)),str(self.traceable_score_9/(self.last_row/5)),str(self.traceable_score_10/(self.last_row/5))]
-                line = [str(self.traceable_score_1/(self.last_row/5)), str(self.traceable_score_2/(self.last_row/5)), str(self.traceable_score_3/(self.last_row/5)), str(self.traceable_score_4/(self.last_row/5))1]
+                line = [str(self.traceable_score_1/(self.last_row/5)), str(self.traceable_score_2/(self.last_row/5)), str(self.traceable_score_3/(self.last_row/5)), str(self.traceable_score_4/(self.last_row/5))]
                 with open(self.path + self.mode+'/' + self.start_time + '/' + 'traceable.csv', 'a') as f:
                     writer = csv.writer(f, lineterminator='\n')
                     writer.writerow(line)
