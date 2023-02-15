@@ -49,13 +49,8 @@ class nav_cloning_node:
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
         self.start_time = time.strftime("%Y%m%d_%H:%M:%S")
         self.path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/analysis/'
-        # self.load_path = '/home/kiyooka/Downloads/change_dataset_balance/2-3_3/model_gpu.pt' #specify model
-        self.load_path = '/home/kiyooka/Downloads/use_dl_output/2-3_1/model_gpu.pt' #specify model
-        # self.load_path = '/home/kiyooka/Downloads/follow_path/1/model_gpu.pt' #specify model
-        # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/model_change_dataset_balance/willow/model_gpu.pt' #specify model
-        # self.load_path = '/home/kiyooka/catkin_ws/src/nav_cloning/data/model_use_dl_output/willow_1/model_gpu.pt' #specify model
-        # self.load_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_change_dataset_balance/0106/model_gpu.pt'
-        # self.load_path = roslib.packages.get_pkg_dir('nav_cloning') + '/data/model_use_dl_output/0106/model_gpu.pt'
+        self.load_path = rospy.get_param("/nav_cloning_node/load_path", "/home/kiyooka/Downloads/change_dataset_balance/2-3_7/model_gpu.pt")
+        print(self.load_path)
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.pos_the = 0.0
@@ -91,22 +86,14 @@ class nav_cloning_node:
         self.collision_list = [[],[]]
         self.position_change_flag = False
         self.traceable_timer_num = 0
-        # self.last_row = 55 # last row of traceable_pos.csv
-        # self.last_row = 325 # last row of traceable_pos.csv
-        self.last_row = 835 # last row of traceable_pos.csv
-        # self.last_row = 1169 # last row of traceable_pos.csv
-        # self.last_row = 35 # last row of traceable_pos.csv
-        # with open(self.path + self.mode + "/corner/" + 'path.csv', 'r') as f:
+        self.last_row = 84 # last row of traceable_pos.csv
         with open(self.path + self.mode + '/path.csv', 'r') as f:
-        # with open('/home/kiyooka/data/dwa.csv', 'r') as f:
-        # with open('/home/kiyooka/data/navfn.csv', 'r') as f:
             is_first = True
             for row in csv.reader(f):
                 if is_first:
                     is_first = False
                     continue
                 str_path_no, str_x, str_y = row
-                # str_x, str_y = row
                 x, y = float(str_x), float(str_y)
                 self.path_points.append([x,y])
 
@@ -195,15 +182,10 @@ class nav_cloning_node:
             resp = set_state( state )
         except rospy.ServiceException as e:
             print("Service call failed: %s" % e)
-        # r.sleep() #need adjust
-        # r.sleep() #need adjust
-        # r.sleep() #need adjust
 
     def first_move(self):
         flag = True
-        # with open(self.path + self.mode + '/traceable_pos_corner_test.csv', 'r') as f:
-        with open(self.path + self.mode + '/traceable_pos.csv', 'r') as f:
-        # with open(self.path + self.mode + '/last.csv', 'r') as f:
+        with open(self.path + self.mode + '/traceable_pos_last2.csv', 'r') as f:
             for row in csv.reader(f):
                 if flag:
                     str_x, str_y, str_angle = row
@@ -217,28 +199,21 @@ class nav_cloning_node:
     def calc_move_pos(self):
         # angle 
         if self.angle_reset_count == 0:
-           # self.offset_ang = -10.0
-           self.offset_ang = -20.0
-        elif self.angle_reset_count == 1:
            self.offset_ang = -10.0
-           # self.offset_ang = -5.0
+        elif self.angle_reset_count == 1:
+           self.offset_ang = -5.0
         elif self.angle_reset_count == 2:
            self.offset_ang = 0
         elif self.angle_reset_count == 3:
-           # self.offset_ang = 5.0
-           self.offset_ang = 10.0
+           self.offset_ang = 5.0
         elif self.angle_reset_count == 4:
-           # self.offset_ang = 10.0
-           self.offset_ang = 20.0
+           self.offset_ang = 10.0
         # position
         number = 0
-        # with open(self.path + self.mode + '/traceable_pos_corner_test.csv', 'r') as f:
-        with open(self.path + self.mode + '/traceable_pos.csv', 'r') as f:
-        # with open(self.path + self.mode + '/last.csv', 'r') as f:
+        with open(self.path + self.mode + '/traceable_pos_last2.csv', 'r') as f:
             for row in csv.reader(f):
                 number += 1
                 if number == self.position_reset_count:
-                    # count, str_x, str_y, str_angle, t = row
                     str_x, str_y, str_angle = row
                     the = float(str_angle) + math.radians(self.offset_ang)
                     the = the - 2.0 * math.pi if the >  math.pi else the
@@ -250,18 +225,19 @@ class nav_cloning_node:
 
     def check_traceable(self):
         traceable = False
-        if self.min_distance <= 0.05:
-            self.traceable_timer_num += 1
-            if self.traceable_timer_num == 10:
-                traceable = True
-                self.traceable_timer_num = 0
+        if self.min_distance <= 0.1:
+            if self.episode > 5:
+                self.traceable_timer_num += 1
+                if self.traceable_timer_num == 20:
+                    traceable = True
+                    self.traceable_timer_num = 0
         else:
             self.traceable_timer_num = 0
         return traceable
 
     def eval(self, traceable, angle_num):
-        # position = (self.position_reset_count - 1) % 7
-        position = (self.position_reset_count - 1) % 5
+        position = (self.position_reset_count - 1) % 7
+        # position = (self.position_reset_count - 1) % 5
         if traceable:
             angle_score = 1
         else:
@@ -271,47 +247,33 @@ class nav_cloning_node:
         if self.position_change_flag: # when the x,y position change
             self.score_list_sum.append(self.score_list)
             print("position_score: " + str(self.score_list))
-            position_score = sum(self.score_list)/5
+            position_score = sum(self.score_list)/len(self.score_list)
             print("position_score: " + str(position_score))
             if position_score == 1:
                 if position == 1:
                     self.traceable_score_1 += 1
                 elif position == 2:
                     self.traceable_score_2 += 1
-                elif position == 4:
+                elif position == 3:
                     self.traceable_score_3 += 1
-                elif position == 0:
+                elif position == 4:
                     self.traceable_score_4 += 1
-                # elif position == 0:
-                #     self.traceable_score_5 += 1
-                # elif position == 6:
-                #     self.traceable_score_6 += 1
-                # elif position == 8:
-                #     self.traceable_score_7 += 1
-                # elif position == 9:
-                #     self.traceable_score_8 += 1
-                # elif position == 10:
-                #     self.traceable_score_9 += 1
-                # elif position == 11:
-                #     self.traceable_score_10 += 1
-                # elif position == 12:
-                #     self.traceable_score_11 += 1
-                # elif position == 0:
-                #     self.traceable_score_12 += 1
+                elif position == 5:
+                    self.traceable_score_5 += 1
+                elif position == 6:
+                    self.traceable_score_6 += 1
+                elif position == 0:
+                    self.traceable_score_7 += 1
 
             print("---traceable---")
             print(self.traceable_score_1)
             print(self.traceable_score_2)
             print(self.traceable_score_3)
             print(self.traceable_score_4)
-            # print(self.traceable_score_5)
-            # print(self.traceable_score_6)
-            # print(self.traceable_score_7)
-            # print(self.traceable_score_8)
-            # print(self.traceable_score_9)
-            # print(self.traceable_score_10)
-            # print(self.traceable_score_11)
-            # print(self.traceable_score_12)
+            print(self.traceable_score_5)
+            print(self.traceable_score_6)
+            print(self.traceable_score_7)
+            print(self.load_path)
             print("---traceable---")
             #---------- csv write -----------------
             line = [str(self.score_list), str(position_score)]
@@ -363,17 +325,11 @@ class nav_cloning_node:
                 print(self.traceable_score_2)
                 print(self.traceable_score_3)
                 print(self.traceable_score_4)
-                # print(self.traceable_score_5)
-                # print(self.traceable_score_6)
-                # print(self.traceable_score_7)
-                # print(self.traceable_score_8)
-                # print(self.traceable_score_9)
-                # print(self.traceable_score_10)
-                # print(self.traceable_score_11)
-                # print(self.traceable_score_12)
+                print(self.traceable_score_5)
+                print(self.traceable_score_6)
+                print(self.traceable_score_7)
 
-                # line = [str(self.traceable_score_1/(self.last_row/5)), str(self.traceable_score_2/(self.last_row/5)), str(self.traceable_score_3/(self.last_row/5)), str(self.traceable_score_4/(self.last_row/5)),str(self.traceable_score_5/(self.last_row/5)),str(self.traceable_score_6/(self.last_row/5)),str(self.traceable_score_7/(self.last_row/5)),str(self.traceable_score_8/(self.last_row/5)),str(self.traceable_score_9/(self.last_row/5)),str(self.traceable_score_10/(self.last_row/5))]
-                line = [str(self.traceable_score_1/(self.last_row/5)), str(self.traceable_score_2/(self.last_row/5)), str(self.traceable_score_3/(self.last_row/5)), str(self.traceable_score_4/(self.last_row/5))]
+                line = [str(self.traceable_score_1/(self.last_row/7)), str(self.traceable_score_2/(self.last_row/7)), str(self.traceable_score_3/(self.last_row/7)), str(self.traceable_score_4/(self.last_row/7)), str(self.traceable_score_5/(self.last_row/7)), str(self.traceable_score_6/(self.last_row/7)), str(self.traceable_score_7/(self.last_row/7))]
                 with open(self.path + self.mode+'/' + self.start_time + '/' + 'traceable.csv', 'a') as f:
                     writer = csv.writer(f, lineterminator='\n')
                     writer.writerow(line)
@@ -390,10 +346,6 @@ class nav_cloning_node:
                 print("angle_reset_count:" + str(self.angle_reset_count))
                 print("position_reset_count:" + str(self.position_reset_count))
 
-                if self.position_reset_count %5 == 3: # center position is pass
-                    self.position_reset_count += 1
-                    self.angle_reset_count = 0
-                    print("center_position")
 
                 self.episode = 0
                 x,y,the = self.calc_move_pos()
@@ -424,7 +376,6 @@ class nav_cloning_node:
         else:
             self.vel.linear.x = 0.2
             self.vel.angular.z = target_action
-        # line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count), str(collision_flag),str(timer_flag)]
         line_trajectory = [str(self.episode), str(self.gazebo_pos_x), str(self.gazebo_pos_y), str(self.move_count), str(collision_flag)]
         with open(self.path + self.mode +'/' +self.start_time + '/' + 'trajectory.csv', 'a') as f:
             writer = csv.writer(f, lineterminator='\n')
