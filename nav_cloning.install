@@ -3,7 +3,7 @@
     local-name: fulanghua_navigation
     version: long_period
 - git:
-    uri: https//github.com/open-rdc/waypoint_nav
+    uri: https://github.com/open-rdc/waypoint_nav
     local-name: waypoint_nav
     version: main
 - git:
@@ -31,7 +31,10 @@
     local-name: navigation
     version: noetic-devel
 - git:
-    uri: https://github.com/haruyama8940/cmd_dir_image
+    uri: https://github.com/open-rdc/cmd_dir_image
     local-name: cmd_dir_image
     version: main
-
+- git:
+    uri: https://github.com/open-rdc/timed_roslaunch
+    local-name: timed_roslaunch
+    version: melodic-devel
