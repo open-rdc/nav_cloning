@@ -39,19 +39,45 @@ angle_error : navigationの出力と訓練されたモデルの出力の差 \
 distance : 目標経路とロボットの位置の間の距離
 
 ## install
-* 環境 
+* Environment
   * ubuntu20.04
-  * ros noetic
-  * Python 3系
+  * [ros noetic](http://wiki.ros.org/noetic/Installation/Ubuntu)
+  * Python3
 
-* ワークスペースの用意
-```
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/src
-catkin_init_workspace
-cd ../
-catkin_build
-```
+* Install python3-catkin-tools
+  ```
+  sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" > /etc/apt/sources.list.d/ros-latest.list'
+  wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+  sudo apt update
+  sudo apt install python3-catkin-tools
+  ```
+
+* Install nav_cloning
+  ```
+  mkdir -p ~/catkin_ws/src
+  cd ~/catkin_ws/src
+  git clone https://github.com/open-rdc/nav_cloning
+  wstool init
+  wstool merge nav_cloning/nav_cloning.install
+  wstool up
+  rosdep install --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
+  cd ~/catkin_ws
+  catkin build
+
+  sudo apt install python3-pip
+  pip3 install torch torchvision scikit-image tensorboard
+  pip3 install --upgrade numpy scikit-image
+  echo "export TURTLEBOT3_MODEL=waffle_pi" >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+* for CPU
+  ```
+  pip3 install torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+  ```
+
+----- old version -----
+
 * nav_cloningの用意
 ```
 cd ~/catkin_ws/src
