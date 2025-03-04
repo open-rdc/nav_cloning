@@ -42,7 +42,7 @@ roslaunch nav_cloning nav_cloning_sim.launch mode:=change_dataset_balance
 ```
 roslaunch nav_cloning nav_cloning_sim.launch script:=nav_cloning_node_pytorch.py mode:=change_dataset_balance
 ```
-* 出力される言葉の定義
+* 出力される言葉の定義\
 loss \
 angle_error : navigationの出力と訓練されたモデルの出力の差 \
 distance : 目標経路とロボットの位置の間の距離
@@ -85,34 +85,35 @@ distance : 目標経路とロボットの位置の間の距離
   pip3 install torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
   ```
 ### mode紹介 (新しい順)
-以下の起動例では, すべて`script=nav_cloning_node_pytorch.py`で実行される
+以下の起動例では, すべて`script:=nav_cloning_node_pytorch.py`で実行される
 
-* change_dataset_balance (default)
+* change_dataset_balance (default)/
 use_dl_outputに比べ、経路から復帰する行動の割合を増やした手法
 ```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=change_dataset_balance
 ```
-* selected_training
+* selected_training/
 use_dl_outputに対して、学習器の出力と目標角速度の差を判断材料として加えた手法
 ```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=selected_training
 ```
-* use_dl_output
+* use_dl_output/
 zigzagに対して、学習器の出力も用いる手法
 ```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=use_dl_output
 ```
-* zigzag
+* zigzag/
 manualに蛇行を加えた手法
 ```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=zigzag
 ```
-* manual
-```
+* manual/
+
 目標経路に近づいたときに、学習器に目標角速度をゼロとして入力する手法
+```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=manual
 ```
-* follow_line
+* follow_line/
 ナビゲーションから得られた目標経路に追従する手法
 ```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=follow_line
