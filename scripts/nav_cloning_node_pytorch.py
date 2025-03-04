@@ -30,7 +30,7 @@ from nav_msgs.msg import Odometry
 class nav_cloning_node:
     def __init__(self):
         rospy.init_node('nav_cloning_node', anonymous=True)
-        self.mode = rospy.get_param("/nav_cloning_node/mode", "use_dl_output")
+        self.mode = rospy.get_param("/nav_cloning_node/mode", "change_dataset_balance")
         self.action_num = 1
         self.dl = deep_learning(n_action = self.action_num)
         self.bridge = CvBridge()
@@ -154,19 +154,14 @@ class nav_cloning_node:
         #img_right = np.asanyarray([r,g,b])
         ros_time = str(rospy.Time.now())
 
-        if self.episode == 0:
+        if self.episode == 8500:
             self.learning = False
-            #self.dl.save(self.save_path)
-            self.dl.load(self.load_path)
+            self.dl.save(self.save_path)
+            #self.dl.load(self.load_path)
 
-#        if self.episode == 8500:
-#            self.learning = False
-#            self.dl.save(self.save_path)
-#            #self.dl.load(self.load_path)
-
-#        if self.episode == 15000:
-#            os.system('killall roslaunch')
-#            sys.exit()
+        if self.episode == 15000:
+            os.system('killall roslaunch')
+            sys.exit()
 
         if self.learning:
             target_action = self.action
