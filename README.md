@@ -109,7 +109,6 @@ manualに蛇行を加えた手法
 roslaunch nav_cloning nav_cloning_sim.launch mode:=zigzag
 ```
 * manual \
-
 目標経路に近づいたときに、学習器に目標角速度をゼロとして入力する手法
 ```
 roslaunch nav_cloning nav_cloning_sim.launch mode:=manual
