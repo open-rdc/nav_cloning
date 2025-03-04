@@ -17,7 +17,7 @@ roscd nav_cloning/experiments/
 ./experiment_use_dl_output.sh
 ```
 `nav_cloning/data/result_{select mode}/{起動した時間}`: ログファイルの保存先 \
-`nav_cloning/data/model_{select mode}/{学習が終了した時間}`: 学習済みモデルの保存先 \ 
+`nav_cloning/data/model_{select mode}/{学習が終了した時間}`: 学習済みモデルの保存先 \
 シェルファイルのパラメータを変更することで様々な条件で実験可能
 
 #### nav_cloning_with_direction (経路選択を含む模倣学習)
